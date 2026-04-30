@@ -114,7 +114,7 @@
         });
       }
 
-      box.insertBefore(listDiv, closeBtn);
+      box.appendChild(listDiv);
       box.appendChild(closeBtn);
     }
 
@@ -188,7 +188,7 @@
         var p = document.createElement('p');
         p.style.cssText = 'color:var(--text-light);text-align:center;padding:20px;';
         p.textContent = '加载失败: ' + e.message;
-        box.insertBefore(p, closeBtn);
+        box.appendChild(p);
       });
     }
 
