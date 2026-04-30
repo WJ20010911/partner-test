@@ -18,7 +18,6 @@
     <div class="card">
       <h2 style="color:var(--primary-dark);margin-bottom:16px;">上传题库</h2>
       <p style="color:var(--text-light);margin-bottom:20px;">出题审核通过后，会在测试中随机出现。</p>
-      <div id="flash-container"></div>
       <div style="background:#fff3cd;border:1px solid #ffeeba;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:0.9em;color:#856404;">
         <strong>⚠️ 注意：分数是反着给的</strong><br>
         最正确的选项应填在 <strong>0 分</strong>（得分最低），<br>
@@ -67,6 +66,7 @@
         <label>标签（用逗号分隔）</label>
         <input type="text" id="q-tags" class="form-input" placeholder="例如: 情感, 物质, 独立">
       </div>
+      <div id="flash-container"></div>
       <button class="btn btn-primary btn-block" onclick="doSubmit()">提交审核</button>
     </div>
   </div>

@@ -74,7 +74,6 @@
 
       // Clear everything after sort bar
       while (box.lastChild && box.lastChild !== sortBar) {
-        if (box.lastChild === closeBtn) { box.removeChild(closeBtn); break; }
         box.removeChild(box.lastChild);
       }
 
