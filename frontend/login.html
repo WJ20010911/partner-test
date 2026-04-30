@@ -72,13 +72,47 @@
       try {
         const res = await api.request('POST', '/api/auth/test-login');
         api.setToken(res.access_token);
-        window.location.href = '/submit.html';
+        showNicknameDialog();
       } catch (e) {
         showFlash('登录失败: ' + e.message, 'error');
         testLoginInProgress = false;
         btn.disabled = false;
         btn.textContent = '🚀 以「测试人员」身份进入';
       }
+    }
+
+    // ── Nickname dialog for test login users ──
+    function showNicknameDialog() {
+      var overlay = document.createElement('div');
+      overlay.id = 'nickname-dialog';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;';
+
+      var box = document.createElement('div');
+      box.style.cssText = 'background:#fff;max-width:380px;width:90%;border-radius:12px;padding:24px;position:relative;text-align:center;';
+
+      box.innerHTML =
+        '<h3 style="color:var(--primary-dark);margin-bottom:8px;">👋 欢迎你！</h3>' +
+        '<p style="color:var(--text-light);font-size:14px;margin-bottom:16px;">为了在致谢中展示你的贡献，请输入一个昵称：</p>' +
+        '<input id="nick-input" type="text" maxlength="20" placeholder="输入昵称（最多20字）" ' +
+        'style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:12px;">' +
+        '<button id="nick-submit" class="btn btn-primary" style="width:100%;">提交</button>';
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      document.getElementById('nick-input').focus();
+
+      document.getElementById('nick-submit').onclick = async function() {
+        var nick = document.getElementById('nick-input').value.trim();
+        if (!nick) { alert('请输入昵称'); return; }
+        try {
+          await api.request('POST', '/api/auth/nickname', { nickname: nick });
+          overlay.remove();
+          window.location.href = '/submit.html';
+        } catch (e) {
+          alert('提交失败: ' + e.message);
+        }
+      };
     }
   </script>
 </body>

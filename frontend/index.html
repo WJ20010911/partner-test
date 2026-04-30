@@ -13,7 +13,6 @@
     <a href="/index.html">首页</a>
     <a href="/login.html">上传题库</a>
     <a href="javascript:void(0)" onclick="showContributors()" style="cursor:pointer;">致谢</a>
-    <a href="javascript:void(0)" onclick="showTesterRegister()" style="cursor:pointer;font-size:0.85em;">🧪 登记昵称</a>
   </div>
 </nav>
   <div class="container">
@@ -95,20 +94,12 @@
 
           var nameSpan = document.createElement('span');
           nameSpan.style.cssText = 'font-size:14px;color:var(--text);';
-          if (item.type === 'tester') {
-            nameSpan.textContent = '🧪 ' + item.username;
-          } else {
-            nameSpan.textContent = '📝 ' + item.username;
-          }
+          nameSpan.textContent = '📝 ' + item.username;
           row.appendChild(nameSpan);
 
           var countSpan = document.createElement('span');
           countSpan.style.cssText = 'font-size:13px;color:var(--text-muted);';
-          if (item.type === 'uploader') {
-            countSpan.textContent = item.count + ' 题';
-          } else {
-            countSpan.textContent = item.count + ' 次测试';
-          }
+          countSpan.textContent = item.count + ' 题';
           row.appendChild(countSpan);
 
           listDiv.appendChild(row);
@@ -138,7 +129,7 @@
 
       var hint = document.createElement('p');
       hint.style.cssText = 'color:var(--text-light);font-size:13px;margin-bottom:12px;';
-      hint.textContent = '📝 上传题目者  🧪 参与测试者';
+      hint.textContent = '📝 上传题目者';
       box.appendChild(hint);
 
       // Sort buttons
@@ -206,100 +197,6 @@
     loadTestCount();
     setInterval(loadTestCount, 60000);
 
-    // ── 测试人员登记昵称 ──
-    function showTesterRegister() {
-      if (document.getElementById('tester-reg-overlay')) return;
-
-      var overlay = document.createElement('div');
-      overlay.id = 'tester-reg-overlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;';
-
-      var box = document.createElement('div');
-      box.style.cssText = 'background:#fff;max-width:380px;width:90%;border-radius:12px;padding:24px;position:relative;text-align:center;';
-
-      box.innerHTML =
-        '<h3 style="color:var(--primary-dark);margin-bottom:12px;">🧪 测试人员登记</h3>' +
-        '<p style="color:var(--text-light);font-size:14px;margin-bottom:16px;">' +
-        '如果你参与过测试，输入结果页的<strong>验真码</strong>即可登记昵称，' +
-        '你的名字将出现在<a href="javascript:void(0)" onclick="showContributors()" style="color:var(--primary-dark);">致谢</a>中。</p>' +
-        '<input id="tester-token-input" type="text" placeholder="输入你的验真码" ' +
-        'style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:8px;">' +
-        '<p id="tester-token-status" style="color:var(--text-muted);font-size:13px;margin-bottom:12px;display:none;"></p>' +
-        '<input id="tester-nick-input" type="text" maxlength="20" placeholder="输入昵称（最多20字）" ' +
-        'style="width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:12px;display:none;">' +
-        '<div style="display:flex;gap:8px;">' +
-        '<button id="tester-reg-cancel" class="btn btn-outline" style="flex:1;">取消</button>' +
-        '<button id="tester-reg-submit" class="btn btn-primary" style="flex:1;">验证并登记</button>' +
-        '</div>';
-
-      overlay.appendChild(box);
-      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
-      document.body.appendChild(overlay);
-
-      var tokenInput = document.getElementById('tester-token-input');
-      var nickInput = document.getElementById('tester-nick-input');
-      var statusEl = document.getElementById('tester-token-status');
-      var submitBtn = document.getElementById('tester-reg-submit');
-      var cancelBtn = document.getElementById('tester-reg-cancel');
-
-      var validatedToken = null;
-
-      submitBtn.onclick = function() {
-        var token = tokenInput.value.trim();
-
-        // Phase 1: validate token
-        if (!validatedToken) {
-          if (!token) { alert('请输入验真码'); return; }
-          submitBtn.disabled = true;
-          submitBtn.textContent = '验证中...';
-          api.verifyByToken(token).then(function(rec) {
-            validatedToken = token;
-            statusEl.style.display = 'block';
-            statusEl.style.color = 'var(--success)';
-            statusEl.textContent = '✅ 验真码有效！请输入昵称';
-            tokenInput.style.display = 'none';
-            nickInput.style.display = 'block';
-            submitBtn.textContent = '提交昵称';
-            submitBtn.disabled = false;
-          }).catch(function() {
-            statusEl.style.display = 'block';
-            statusEl.style.color = 'var(--danger)';
-            statusEl.textContent = '❌ 验真码无效，请检查后重试';
-            submitBtn.disabled = false;
-            submitBtn.textContent = '验证并登记';
-          });
-          return;
-        }
-
-        // Phase 2: save nickname
-        var nick = nickInput.value.trim();
-        if (!nick) { alert('请输入昵称'); return; }
-        submitBtn.disabled = true;
-        submitBtn.textContent = '提交中...';
-        api.setTesterNickname(validatedToken, nick).then(function() {
-          overlay.remove();
-          alert('🎉 登记成功！你的昵称已加入致谢列表。');
-        }).catch(function(e) {
-          alert('提交失败: ' + e.message);
-          submitBtn.disabled = false;
-          submitBtn.textContent = '提交昵称';
-        });
-      };
-
-      cancelBtn.onclick = function() {
-        if (validatedToken) {
-          // Reset to phase 1
-          validatedToken = null;
-          tokenInput.style.display = 'block';
-          nickInput.style.display = 'none';
-          statusEl.style.display = 'none';
-          submitBtn.textContent = '验证并登记';
-          tokenInput.value = '';
-          return;
-        }
-        overlay.remove();
-      };
-    }
   </script>
 </body>
 </html>

@@ -273,19 +273,35 @@ def handle_me(headers):
         conn.close()
 
 def handle_test_login(headers, body):
+    # Create a unique user each time so each uploader can set their own nickname
+    uid = "test_" + uuid.uuid4().hex[:8]
     conn = get_db()
     try:
-        existing = conn.execute("SELECT id FROM users WHERE id = ?", ("test_uploader",)).fetchone()
-        if not existing:
-            conn.execute(
-                "INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-                ("test_uploader", "test@local.dev", "", "user", datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
-            )
-            conn.commit()
+        conn.execute(
+            "INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
+            (uid, f"test_{uuid.uuid4().hex[:6]}@local.dev", "", "user",
+             datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+        )
+        conn.commit()
     finally:
         conn.close()
-    token = make_token("test_uploader", "user")
+    token = make_token(uid, "user")
     return json_response({"access_token": token, "token_type": "bearer", "test_mode": True})
+
+def handle_set_nickname(headers, body):
+    user, err = require_auth(headers)
+    if err:
+        return err
+    nickname = body.get("nickname", "").strip()
+    if not nickname or len(nickname) > 20:
+        return error_response("昵称无效（1-20字）")
+    conn = get_db()
+    try:
+        conn.execute("UPDATE users SET username = ? WHERE id = ?", (nickname, user["uid"]))
+        conn.commit()
+        return json_response({"status": "ok"})
+    finally:
+        conn.close()
 
 def handle_get_questions(headers, query):
     count = int(query.get("count", [QUESTION_COUNT_PER_TEST])[0])
@@ -680,28 +696,12 @@ def handle_contributors(headers):
             "GROUP BY u.id"
         ).fetchall()
 
-        # Testers: testers who set a nickname
-        testers = conn.execute(
-            "SELECT tn.nickname, tn.created_at as last_time, COUNT(DISTINCT t.id) as test_count "
-            "FROM tester_nicknames tn "
-            "LEFT JOIN test_records t ON t.token = tn.token "
-            "GROUP BY tn.token"
-        ).fetchall()
-
         result = []
         for r in uploaders:
             name = r["username"] or r["email"].split("@")[0]
             result.append({
-                "type": "uploader",
                 "username": name,
                 "count": r["qcount"],
-                "time": r["last_time"]
-            })
-        for r in testers:
-            result.append({
-                "type": "tester",
-                "username": r["nickname"],
-                "count": r["test_count"],
                 "time": r["last_time"]
             })
 
@@ -1081,6 +1081,7 @@ def dispatch_api(method, path, headers, body):
 route("POST", r"/api/auth/register")(lambda h, b, *a: handle_register(b))
 route("POST", r"/api/auth/login")(lambda h, b, *a: handle_login(b))
 route("POST", r"/api/auth/test-login")(lambda h, b, *a: handle_test_login(h, b))
+route("POST", r"/api/auth/nickname")(lambda h, b, *a: handle_set_nickname(h, b))
 route("GET", r"/api/auth/me")(lambda h, b, *a: handle_me(h))
 route("GET", r"/api/questions")(lambda h, b, *a: handle_get_questions(h, parse_qs(urlparse(a[0] if a else "/").query) if False else {}))
 # We handle query params differently - the lambda above is a placeholder
