@@ -1,0 +1,2 @@
+# Zero external dependencies — pure Python stdlib
+# This file exists for Railway to detect Python project.

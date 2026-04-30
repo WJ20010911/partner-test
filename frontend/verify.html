@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>结果验真 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/index.html">首页</a>
+      <a href="/login.html">上传题库</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="card">
+      <h2 style="color:var(--primary-dark);margin-bottom:16px;">结果验真</h2>
+      <p style="color:var(--text-light);margin-bottom:20px;">输入验真码，验证测试结果的真伪。</p>
+      <div class="form-group">
+        <label for="verify-token">验真码</label>
+        <input type="text" id="verify-token" class="form-input" placeholder="粘贴完整的验真码">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="verify()">验真</button>
+    </div>
+    <div id="verify-result" class="hidden card"></div>
+  </div>
+  <div class="footer">
+    <p>伴侣匹配测试 &copy; 2026</p>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    async function verify() {
+      const token = document.getElementById('verify-token').value.trim();
+      if (!token) { alert('请输入验真码'); return; }
+      const container = document.getElementById('verify-result');
+      container.classList.remove('hidden');
+      container.innerHTML = '<div class="spinner"></div>';
+      try {
+        const result = await api.verifyByToken(token);
+        if (result.is_authentic) {
+          container.innerHTML = [
+            '<div class="verify-result">',
+            '  <div class="verify-icon verify-authentic">&#10004;</div>',
+            '  <h3 style="color:#155724;margin-bottom:12px;">验证通过 - 结果真实</h3>',
+            '  <p style="color:var(--text-light);">真实分数: <strong style="color:var(--primary-dark);font-size:1.2em;">' + result.real_score + '</strong></p>',
+            '  <p style="color:var(--text-muted);font-size:0.85em;margin-top:12px;">测试时间: ' + new Date(result.created_at).toLocaleString() + '</p>',
+            '</div>'
+          ].join('\n');
+        } else {
+          container.innerHTML = [
+            '<div class="verify-result">',
+            '  <div class="verify-icon verify-fake">&#10006;</div>',
+            '  <h3 style="color:#721c24;margin-bottom:12px;">验证失败 - 结果可能被篡改</h3>',
+            '  <p style="color:var(--text-light);">验真码无效或已被篡改。</p>',
+            '</div>'
+          ].join('\n');
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="verify-result"><p style="color:#721c24;">验真失败: ' + e.message + '</p></div>';
+      }
+    }
+  </script>
+</body>
+</html>

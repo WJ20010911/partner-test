@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>你适合什么样的伴侣？</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+  <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+  <div class="nav-links">
+    <a href="/index.html">首页</a>
+    <a href="/login.html">上传题库</a>
+    <a href="javascript:void(0)" onclick="showContributors()" style="cursor:pointer;">致谢</a>
+  </div>
+</nav>
+  <div class="container">
+    <div class="hero">
+      <div class="illustration">💕</div>
+      <h1>你适合什么样的伴侣？</h1>
+      <p>一套科学的恋爱价值观自测题，帮你了解自己在感情中的真实偏好与期待。只需几分钟，发现你的理想伴侣画像。</p>
+      <a href="/test.html" class="btn btn-primary" style="font-size:1.15em;padding:16px 48px;">开始测试</a>
+    </div>
+    <div class="card" style="text-align:center;">
+      <p style="color:var(--text-light);margin-bottom:12px;">已参与测试 <strong id="test-count" style="color:var(--primary-dark);">--</strong> 人次</p>
+      <p style="color:var(--text-muted);font-size:0.9em;">所有数据匿名处理，结果仅供个人参考</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
+      <div class="card" style="text-align:center;">
+        <h3 style="color:var(--primary-dark);margin-bottom:8px;">📝 情景式题目</h3>
+        <p style="color:var(--text-light);font-size:0.9em;">真实的恋爱场景，选择最接近你内心的答案</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h3 style="color:var(--primary-dark);margin-bottom:8px;">🎯 精准分析</h3>
+        <p style="color:var(--text-light);font-size:0.9em;">多维度评估你的恋爱价值观倾向</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <h3 style="color:var(--primary-dark);margin-bottom:8px;">🔒 隐私保护</h3>
+        <p style="color:var(--text-light);font-size:0.9em;">结果仅你自己可见，数据安全有保障</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <p>伴侣匹配测试 &copy; 2026</p>
+    <p style="margin-top:4px;"><a href="/verify.html" style="color:var(--text-muted);text-decoration:underline;">结果验真</a></p>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    async function showContributors() {
+      try {
+        var list = await api.getContributors();
+        var names = list.map(function(c) { return c.username; }).filter(Boolean);
+        var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">' +
+          '<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:24px;position:relative;">' +
+          '<h3 style="color:var(--primary-dark);margin-bottom:16px;">致谢</h3>';
+        if (names.length === 0) {
+          html += '<p style="color:var(--text-light);">暂无贡献者</p>';
+        } else {
+          html += '<p style="color:var(--text-light);margin-bottom:12px;">感谢以下用户上传题目：</p>';
+          html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+          names.forEach(function(name) {
+            html += '<span style="display:inline-block;padding:6px 14px;background:#e8f4f8;color:var(--primary-dark);border-radius:16px;font-size:14px;">' + name + '</span>';
+          });
+          html += '</div>';
+        }
+        html += '<button class="btn btn-outline" style="margin-top:16px;width:100%;" onclick="this.closest(\'[style*=\\"fixed\\"]\').remove()">关闭</button>' +
+          '</div></div>';
+        var div = document.createElement('div');
+        div.innerHTML = html;
+        document.body.appendChild(div.firstElementChild);
+      } catch (e) {
+        showFlash('加载失败: ' + e.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

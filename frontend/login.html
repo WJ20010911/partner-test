@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/index.html">首页</a>
+      <a href="/login.html">上传题库</a>
+    </div>
+  </nav>
+  <div class="container" style="max-width:420px;">
+    <div class="card">
+      <h2 style="color:var(--primary-dark);margin-bottom:8px;text-align:center;">上传题库</h2>
+      <p style="text-align:center;color:var(--text-muted);font-size:0.85em;margin-bottom:20px;">
+        为了方便管理，需要使用邮箱注册
+      </p>
+      <div id="flash-container"></div>
+      <div class="form-group">
+        <label for="email">邮箱</label>
+        <input type="email" id="email" class="form-input" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" class="form-input" placeholder="输入密码">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">登录</button>
+      <p style="text-align:center;margin-top:16px;color:var(--text-light);font-size:0.9em;">
+        还没有账号？<a href="/register.html" style="color:var(--primary-dark);">注册</a>
+      </p>
+      <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+      <div style="text-align:center;">
+        <button class="btn btn-outline" id="btn-test-login" onclick="testLogin()" style="width:100%;">
+          🚀 以「测试人员」身份进入
+        </button>
+        <p style="color:var(--text-muted);font-size:0.8em;margin-top:6px;">
+          跳过登录，直接上传题目，提交后需管理员审核
+        </p>
+      </div>
+    </div>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    async function doLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) { showFlash('请填写邮箱和密码', 'error'); return; }
+      try {
+        const res = await api.login(email, password);
+        api.setToken(res.access_token);
+        showFlash('登录成功', 'success');
+        setTimeout(function() { window.location.href = '/submit.html'; }, 500);
+      } catch (e) {
+        showFlash('登录失败: ' + e.message, 'error');
+      }
+    }
+
+    // ── Test login ──
+    let testLoginInProgress = false;
+    async function testLogin() {
+      if (testLoginInProgress) return;
+      testLoginInProgress = true;
+      const btn = document.getElementById('btn-test-login');
+      btn.disabled = true;
+      btn.textContent = '⏳ 正在进入...';
+      try {
+        const res = await api.request('POST', '/api/auth/test-login');
+        api.setToken(res.access_token);
+        window.location.href = '/submit.html';
+      } catch (e) {
+        showFlash('登录失败: ' + e.message, 'error');
+        testLoginInProgress = false;
+        btn.disabled = false;
+        btn.textContent = '🚀 以「测试人员」身份进入';
+      }
+    }
+  </script>
+</body>
+</html>

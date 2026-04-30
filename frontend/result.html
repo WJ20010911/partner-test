@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>测试结果 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+  <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+  <div class="nav-links">
+    <a href="/index.html">首页</a>
+    <a href="/login.html">上传题库</a>
+  </div>
+</nav>
+  <div class="container">
+    <div class="card" id="result-card">
+      <div class="spinner" id="result-spinner"></div>
+    </div>
+    <div class="card hidden" id="actions-card">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+        <a href="/index.html" class="btn btn-primary btn-sm">再来一次</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <p>伴侣匹配测试 &copy; 2026</p>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    async function loadResult() {
+      const id = getQueryParam('id');
+      if (!id) {
+        document.getElementById('result-card').innerHTML = '<p style="text-align:center;color:var(--text-light);">缺少记录ID</p>';
+        return;
+      }
+      try {
+        const rec = await api.getRecord(id);
+        document.getElementById('result-spinner').remove();
+        const card = document.getElementById('result-card');
+        card.innerHTML = `
+          <div class="score-display">
+            <div class="score-number">${rec.real_score}</div>
+            <div class="score-label">你的伴侣匹配度</div>
+            <div style="margin-top:12px;font-family:'Courier New',monospace;font-size:1.15em;letter-spacing:3px;color:var(--text-muted);">${rec.short_code}</div>
+          </div>
+          <p style="text-align:center;color:var(--text-light);margin-bottom:20px;">基于你的选择，系统分析了你的恋爱价值观倾向</p>
+          <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+          <div style="text-align:center;">
+            <p style="color:var(--text-muted);font-size:0.8em;margin-bottom:8px;">验真码（复制后在验真页验证）</p>
+            <div class="token-box" id="token-box">${rec.token}</div>
+            <button class="btn btn-sm btn-secondary" onclick="copyToken()">复制验真码</button>
+          </div>
+        `;
+        document.getElementById('actions-card').classList.remove('hidden');
+      } catch (e) {
+        document.getElementById('result-card').innerHTML = '<p style="text-align:center;color:var(--text-light);">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    function copyToken() {
+      const txt = document.getElementById('token-box').textContent;
+      navigator.clipboard.writeText(txt).then(() => {
+        alert('令牌已复制');
+      });
+    }
+    loadResult();
+  </script>
+</body>
+</html>

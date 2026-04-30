@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的记录 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/index.html">首页</a>
+      <a href="#" onclick="logout()" style="color:#e88d9e;">退出</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="card">
+      <h2 style="color:var(--primary-dark);margin-bottom:20px;">我的测试记录</h2>
+      <div id="records-content"><p style="text-align:center;color:var(--text-light);">功能开发中...</p></div>
+    </div>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>function logout() { api.clearToken(); window.location.href = '/index.html'; }</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>答题 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+  <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+  <div class="nav-links">
+    <a href="/index.html">首页</a>
+    <a href="/login.html">上传题库</a>
+  </div>
+</nav>
+  <div class="container">
+    <div id="start-screen" class="card" style="text-align:center;">
+      <h2 style="color:var(--primary-dark);margin-bottom:16px;">准备好了吗？</h2>
+      <p style="color:var(--text-light);margin-bottom:24px;">
+        你会遇到一些情景题，请凭第一感觉选择答案。<br>
+        如果某道题不适用或让你不适，可以使用「跳过」或「投诉并跳过」。
+      </p>
+      <button class="btn btn-primary" onclick="startTest()">开始答题</button>
+    </div>
+    <div id="test-screen" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="color:var(--text-light);font-size:0.9em;">第 <span id="q-num">1</span> / <span id="q-total">20</span> 题</span>
+          <span style="color:var(--text-light);font-size:0.9em;" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;"></div></div>
+        <div id="timer-bar-wrapper" style="height:4px;background:#eee;border-radius:2px;margin-bottom:8px;overflow:hidden;display:none;">
+          <div id="timer-bar" style="height:100%;background:#e88d9e;width:100%;transition:width 1s linear;"></div>
+        </div>
+        <div id="q-category" style="display:none;"></div>
+        <h3 id="q-content" style="font-size:1.2em;margin-bottom:20px;min-height:60px;"></h3>
+        <ul class="options-list" id="options-list"></ul>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-sm btn-outline" id="skip-btn" onclick="skipQuestion(false)" style="flex:1;font-size:0.85em;">跳过</button>
+          <button class="btn btn-sm btn-outline" id="complain-btn" onclick="skipQuestion(true)" style="flex:1;font-size:0.85em;border-color:#e88d9e;color:#e88d9e;">投诉并跳过</button>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-block" id="next-btn" onclick="nextQuestion()" disabled>下一步</button>
+    </div>
+    <div id="loading-screen" class="hidden">
+      <div class="spinner"></div>
+      <p style="text-align:center;color:var(--text-light);">正在分析你的答案...</p>
+    </div>
+  </div>
+  <div class="footer">
+    <p>伴侣匹配测试 &copy; 2026</p>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    let questions = [];
+    let currentIdx = 0;
+    let answers = [];
+    let selectedOption = -1;
+    let seenIds = [];
+    let isSkipping = false;
+    let timerInterval = null;
+
+    async function startTest() {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('test-screen').classList.remove('hidden');
+      try {
+        const qs = await api.getQuestions(12);
+        if (!qs.length) throw new Error('题库为空');
+        questions = qs;
+        seenIds = qs.map(function(q) { return q.id; });
+        document.getElementById('q-total').textContent = questions.length;
+        renderQuestion();
+      } catch (e) {
+        alert('加载题目失败: ' + e.message);
+        document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('test-screen').classList.add('hidden');
+      }
+    }
+
+    function clearTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      document.getElementById('timer-bar-wrapper').style.display = 'none';
+    }
+
+    function handleTimeout() {
+      clearTimer();
+      // Auto-advance: record with selected_index = -1 to mark timeout
+      answers.push({ question_id: questions[currentIdx].id, selected_index: -1 });
+      currentIdx++;
+      if (currentIdx >= questions.length) {
+        submitAnswers();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    function renderQuestion() {
+      clearTimer();
+      const q = questions[currentIdx];
+      document.getElementById('q-num').textContent = currentIdx + 1;
+      document.getElementById('q-content').textContent = q.content;
+      const pct = ((currentIdx) / questions.length * 100).toFixed(0);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent = pct + '%';
+
+      selectedOption = -1;
+      const list = document.getElementById('options-list');
+      list.innerHTML = '';
+      q.options.forEach(function(opt, i) {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt.text;
+        btn.onclick = function() { selectOption(i); };
+        btn.dataset.index = i;
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+      document.getElementById('next-btn').disabled = true;
+
+      // Start countdown timer if time_limit > 0
+      const limit = q.time_limit || 0;
+      if (limit > 0) {
+        let remaining = limit;
+        const wrapper = document.getElementById('timer-bar-wrapper');
+        const bar = document.getElementById('timer-bar');
+        wrapper.style.display = 'block';
+        bar.style.width = '100%';
+        bar.style.transition = 'none';
+        // Force reflow to reset animation
+        bar.offsetHeight;
+        bar.style.transition = 'width 1s linear';
+        timerInterval = setInterval(function() {
+          remaining--;
+          const pct = (remaining / limit) * 100;
+          bar.style.width = Math.max(0, pct) + '%';
+          if (remaining <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            handleTimeout();
+          }
+        }, 1000);
+      }
+    }
+
+    function selectOption(idx) {
+      selectedOption = idx;
+      document.querySelectorAll('.option-btn').forEach(function(btn, i) {
+        btn.classList.toggle('selected', i === idx);
+      });
+      document.getElementById('next-btn').disabled = false;
+    }
+
+    async function skipQuestion(isComplaint) {
+      if (isSkipping) return;
+      isSkipping = true;
+      clearTimer();
+      const q = questions[currentIdx];
+      try {
+        if (isComplaint) {
+          await api.recordSkip(q.id, 'complaint');
+        }
+        const replacement = await api.getReplacement(seenIds);
+        seenIds.push(replacement.id);
+        questions[currentIdx] = replacement;
+        renderQuestion();
+      } catch (e) {
+        alert('题库已用完，请回答当前题目。');
+      } finally {
+        isSkipping = false;
+      }
+    }
+
+    function nextQuestion() {
+      if (selectedOption < 0) return;
+      clearTimer();
+      answers.push({ question_id: questions[currentIdx].id, selected_index: selectedOption });
+      currentIdx++;
+      if (currentIdx >= questions.length) {
+        submitAnswers();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    async function submitAnswers() {
+      document.getElementById('test-screen').classList.add('hidden');
+      document.getElementById('loading-screen').classList.remove('hidden');
+      try {
+        const result = await api.submitTest(answers);
+        window.location.href = '/result.html?id=' + result.record_id;
+      } catch (e) {
+        alert('提交失败: ' + e.message);
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('test-screen').classList.remove('hidden');
+      }
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

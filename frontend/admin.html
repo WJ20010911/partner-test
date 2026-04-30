@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+    .stat-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; }
+    .stat-card .num { font-size:32px; font-weight:700; color:var(--primary-dark); }
+    .stat-card .label { font-size:13px; color:var(--text-light); margin-top:4px; }
+    .login-box { max-width:360px; margin:60px auto; text-align:center; }
+    .login-box input { width:100%; padding:12px 16px; font-size:16px; border:1px solid var(--border); border-radius:8px; box-sizing:border-box; margin-bottom:12px; }
+    .login-box .error { color:#e88d9e; font-size:14px; margin-top:8px; }
+    .admin-table { width:100%; border-collapse:collapse; }
+    .admin-table th,.admin-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:14px; }
+    .admin-table th { background:var(--bg); font-weight:600; color:var(--text-light); }
+    .admin-table tr:hover { background:var(--bg); }
+    .tag { display:inline-block; padding:2px 8px; border-radius:4px; background:#e8f4f8; color:var(--primary-dark); font-size:12px; margin:2px; }
+    #admin-content { min-height:200px; }
+    .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .8s linear infinite; margin:40px auto; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .flash { padding:10px 16px; border-radius:8px; margin-bottom:16px; font-size:14px; }
+    .flash.success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+    .flash.error { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+    .admin-main { display:none; }
+    .tab-bar { display:flex; flex-wrap:wrap; gap:0; margin-bottom:20px; border-bottom:2px solid var(--border); }
+    .tab-bar button { padding:10px 14px; border:none; background:none; cursor:pointer; font-weight:500; color:var(--text-light); border-bottom:3px solid transparent; transition:all .2s; font-size:13px; white-space:nowrap; }
+    .tab-bar button.active { color:var(--primary-dark); font-weight:600; border-bottom-color:var(--primary); }
+    .complaint-card { border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:12px; background:var(--bg); }
+    .complaint-card.high-risk { border-left:4px solid #e88d9e; background:#fff8f8; }
+    .complaint-card.low-risk { border-left:4px solid #ccc; }
+    .complaint-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .complaint-body { flex:1; min-width:0; }
+    .complaint-body .qtext { font-size:14px; font-weight:500; margin-bottom:6px; word-break:break-word; }
+    .complaint-meta { display:flex; gap:16px; font-size:13px; color:var(--text-light); flex-wrap:wrap; }
+    .complaint-meta .badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; }
+    .badge-danger { background:#fce4ec; color:#c62828; }
+    .badge-warning { background:#fff3e0; color:#e65100; }
+    .badge-ok { background:#e8f5e9; color:#2e7d32; }
+    .complaint-actions { white-space:nowrap; padding-left:8px; }
+    .toggle-link { color:var(--primary-dark); cursor:pointer; font-size:13px; text-decoration:underline; display:inline-block; margin-top:4px; }
+    .toggle-link:hover { color:var(--primary); }
+    .minor-list { display:none; margin-top:8px; }
+    .minor-list.show { display:block; }
+    .threshold-note { font-size:13px; color:var(--text-light); margin-bottom:12px; padding:8px 12px; background:var(--bg); border-radius:8px; }
+    .bar-chart { display:flex; align-items:flex-end; gap:6px; height:160px; padding:10px 0; }
+    .bar-chart .bar { flex:1; min-width:20px; border-radius:4px 4px 0 0; position:relative; background:var(--primary); opacity:0.8; transition:opacity .2s; cursor:pointer; }
+    .bar-chart .bar:hover { opacity:1; }
+    .bar-chart .bar .bar-label { position:absolute; bottom:-22px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--text-light); white-space:nowrap; }
+    .bar-chart .bar .bar-val { position:absolute; top:-18px; left:50%; transform:translateX(-50%); font-size:11px; font-weight:600; color:var(--primary-dark); }
+    .settings-form { max-width:400px; }
+    .settings-form label { display:block; font-size:14px; font-weight:500; margin-bottom:4px; color:var(--text-light); }
+    .settings-form input { width:100%; padding:10px 14px; font-size:14px; border:1px solid var(--border); border-radius:8px; box-sizing:border-box; margin-bottom:16px; }
+    .user-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+    .user-row .user-info { flex:1; }
+    .user-row .user-info .email { font-weight:500; font-size:14px; }
+    .user-row .user-info .meta { font-size:12px; color:var(--text-light); }
+    .banned-tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; background:#fce4ec; color:#c62828; margin-left:8px; }
+    .tag-chip { display:inline-block; padding:4px 12px; border-radius:16px; background:#e8f4f8; color:var(--primary-dark); font-size:13px; margin:3px; }
+    .log-entry { padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; display:flex; gap:12px; }
+    .log-entry .log-time { color:var(--text-light); white-space:nowrap; min-width:140px; }
+    .log-entry .log-action { font-weight:500; min-width:80px; }
+    .log-entry .log-detail { color:var(--text-light); }
+    .section-title { font-size:15px; font-weight:600; color:var(--primary-dark); margin-bottom:12px; margin-top:20px; }
+    .section-title:first-child { margin-top:0; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/index.html">首页</a>
+    </div>
+  </nav>
+
+  <!-- Login Screen -->
+  <div class="container" id="login-screen">
+    <div class="card login-box">
+      <h2 style="color:var(--primary-dark);margin-bottom:8px;">管理后台</h2>
+      <p style="color:var(--text-light);font-size:14px;margin-bottom:24px;">请输入管理员密码</p>
+      <input type="password" id="admin-password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn btn-primary" onclick="doLogin()" style="width:100%;">进入后台</button>
+      <div id="login-error" class="error"></div>
+    </div>
+  </div>
+
+  <!-- Admin Main Screen -->
+  <div class="container admin-main" id="admin-main">
+    <div class="card" id="stats-overview-card">
+      <h2 style="color:var(--primary-dark);margin-bottom:20px;">数据概览</h2>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="num" id="stat-total">-</div><div class="label">测试总人次</div></div>
+        <div class="stat-card"><div class="num" id="stat-max">-</div><div class="label">最高分</div></div>
+        <div class="stat-card"><div class="num" id="stat-min">-</div><div class="label">最低分</div></div>
+        <div class="stat-card"><div class="num" id="stat-avg">-</div><div class="label">平均分</div></div>
+        <div class="stat-card"><div class="num" id="stat-questions">-</div><div class="label">题库总量</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="flash-container"></div>
+      <div class="tab-bar">
+        <button class="active" id="tab-overview" onclick="switchTab('overview')">概览</button>
+        <button id="tab-pending" onclick="switchTab('pending')">待审核</button>
+        <button id="tab-all" onclick="switchTab('all')">全部题库</button>
+        <button id="tab-complaints" onclick="switchTab('complaints')">投诉</button>
+        <button id="tab-users" onclick="switchTab('users')">用户</button>
+        <button id="tab-tags" onclick="switchTab('tags')">标签</button>
+        <button id="tab-logs" onclick="switchTab('logs')">日志</button>
+        <button id="tab-settings" onclick="switchTab('settings')">设置</button>
+      </div>
+      <div id="admin-content" style="min-height:300px;"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    var ADMIN_TOKEN_KEY = 'admin_token';
+    var currentTab = 'overview';
+
+    function getAdminToken() { return localStorage.getItem(ADMIN_TOKEN_KEY); }
+    function setAdminToken(t) { localStorage.setItem(ADMIN_TOKEN_KEY, t); }
+    function clearAdminToken() { localStorage.removeItem(ADMIN_TOKEN_KEY); }
+
+    (function init() {
+      var token = getAdminToken();
+      if (token) { api.setToken(token); showAdmin(); }
+    })();
+
+    async function doLogin() {
+      var pw = document.getElementById('admin-password');
+      var err = document.getElementById('login-error');
+      err.textContent = '';
+      if (!pw.value) { err.textContent = '请输入密码'; return; }
+      try {
+        var res = await api.adminAuth(pw.value);
+        setAdminToken(res.access_token);
+        api.setToken(res.access_token);
+        showAdmin();
+      } catch (e) {
+        err.textContent = '密码错误';
+      }
+    }
+
+    async function showAdmin() {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('admin-main').style.display = 'block';
+      loadOverview();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-bar button').forEach(function(b) {
+        b.classList.toggle('active', b.id === 'tab-' + tab);
+      });
+      var container = document.getElementById('admin-content');
+      container.innerHTML = '<div class="spinner"></div>';
+      if (tab === 'overview') loadOverview();
+      else if (tab === 'pending') loadPending();
+      else if (tab === 'all') loadAll();
+      else if (tab === 'complaints') loadComplaints();
+      else if (tab === 'users') loadUsers();
+      else if (tab === 'tags') loadTags();
+      else if (tab === 'logs') loadLogs();
+      else if (tab === 'settings') loadSettings();
+    }
+
+    // ─── Overview ───
+    async function loadOverview() {
+      var container = document.getElementById('admin-content');
+      try {
+        var s = await api.adminStats();
+        document.getElementById('stat-total').textContent = s.total_tests;
+        document.getElementById('stat-max').textContent = s.max_score != null ? s.max_score : '-';
+        document.getElementById('stat-min').textContent = s.min_score != null ? s.min_score : '-';
+        document.getElementById('stat-avg').textContent = s.avg_score != null ? s.avg_score : '-';
+        document.getElementById('stat-questions').textContent = s.question_count;
+
+        var html = '<div class="section-title">分数分布</div>';
+        var dist = await api.adminScoreDistribution();
+        if (dist && dist.buckets) {
+          var maxVal = Math.max(...Object.values(dist.buckets), 1);
+          html += '<div class="bar-chart">';
+          Object.keys(dist.buckets).forEach(function(k) {
+            var h = Math.max(4, (dist.buckets[k] / maxVal) * 140);
+            html += '<div class="bar" style="height:' + h + 'px" title="' + k + ': ' + dist.buckets[k] + '人">';
+            html += '<div class="bar-val">' + dist.buckets[k] + '</div>';
+            html += '<div class="bar-label">' + k + '</div></div>';
+          });
+          html += '</div>';
+        }
+
+        html += '<div class="section-title">近期测试趋势</div>';
+        var trend = await api.adminTestTrend();
+        if (trend && trend.daily && trend.daily.length) {
+          var maxCnt = Math.max(...trend.daily.map(function(d) { return d.count; }), 1);
+          html += '<div class="bar-chart">';
+          trend.daily.forEach(function(d) {
+            var h = Math.max(4, (d.count / maxCnt) * 140);
+            html += '<div class="bar" style="height:' + h + 'px" title="' + d.date + ': ' + d.count + '次">';
+            html += '<div class="bar-val">' + d.count + '</div>';
+            html += '<div class="bar-label">' + d.date.slice(5) + '</div></div>';
+          });
+          html += '</div>';
+        } else {
+          html += '<p style="color:var(--text-light);font-size:13px;">暂无数据</p>';
+        }
+
+        html += '<div class="section-title">题目状态</div>';
+        var qs = await api.adminQuestionStats();
+        html += '<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">';
+        html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + qs.approved + '</div><div class="label">已通过</div></div>';
+        html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + qs.pending + '</div><div class="label">待审核</div></div>';
+        html += '<div class="stat-card"><div class="num" style="font-size:24px;color:#e88d9e;">' + qs.rejected + '</div><div class="label">已驳回</div></div>';
+        html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + qs.total + '</div><div class="label">总计</div></div>';
+        html += '</div>';
+
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    // ─── Pending Questions ───
+    async function loadPending() {
+      var container = document.getElementById('admin-content');
+      try {
+        var questions = await api.getPendingQuestions();
+        if (!questions.length) {
+          container.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无待审核题目</p>';
+          return;
+        }
+        var html = '<div class="section-title">待审核题目 (' + questions.length + ')</div>';
+        html += '<table class="admin-table"><thead><tr><th>题目</th><th>选项</th><th>操作</th></tr></thead><tbody>';
+        for (var i = 0; i < questions.length; i++) {
+          var q = questions[i];
+          html += '<tr>';
+          html += '<td style="max-width:200px;word-break:break-all;">' + escapeHtml(q.content) + '</td>';
+          html += '<td style="font-size:13px;">';
+          for (var j = 0; j < q.options.length; j++) {
+            html += '[' + q.options[j].score + '分] ' + escapeHtml(q.options[j].text) + '<br>';
+          }
+          html += '</td>';
+          html += '<td style="white-space:nowrap;">';
+          html += '<button class="btn btn-sm btn-secondary" onclick="approve(\'' + q.id + '\')" style="margin-right:4px;">通过</button>';
+          html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="reject(\'' + q.id + '\')">驳回</button>';
+          html += '</td></tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    // ─── All Questions ───
+    async function loadAll() {
+      var container = document.getElementById('admin-content');
+      try {
+        var questions = await api.getAllQuestions();
+        if (!questions.length) {
+          container.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无题目</p>';
+          return;
+        }
+        var html = '<div class="section-title">全部题库 (' + questions.length + ' 题)</div>';
+        html += '<div id="batch-bar" style="margin-bottom:8px;display:flex;gap:8px;align-items:center;"></div>';
+        html += '<table class="admin-table"><thead><tr><th style="width:32px;"><input type="checkbox" id="select-all" onchange="toggleSelectAll()"></th><th>状态</th><th>题目</th><th>选项</th><th>标签</th><th>提交者</th><th>操作</th></tr></thead><tbody>';
+        for (var i = 0; i < questions.length; i++) {
+          var q = questions[i];
+          var statusLabel = q.status === 'approved' ? '<span style="color:#2e7d32;">已通过</span>' : q.status === 'pending' ? '<span style="color:#e65100;">待审核</span>' : '<span style="color:#c62828;">已驳回</span>';
+          html += '<tr id="qrow-' + q.id + '">';
+          html += '<td><input type="checkbox" class="q-checkbox" value="' + q.id + '" onchange="updateBatchBar()"></td>';
+          html += '<td style="font-size:12px;white-space:nowrap;">' + statusLabel + '</td>';
+          html += '<td style="max-width:200px;word-break:break-all;font-size:13px;">' + escapeHtml(q.content) + '</td>';
+          html += '<td style="font-size:12px;">';
+          for (var j = 0; j < q.options.length; j++) {
+            html += '[' + q.options[j].score + '分] ' + escapeHtml(q.options[j].text) + '<br>';
+          }
+          html += '</td>';
+          html += '<td style="font-size:12px;">' + (q.tags || []).map(function(t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join(' ') + '</td>';
+          html += '<td style="font-size:12px;color:var(--text-light);">' + escapeHtml(q.submitter || '-') + '</td>';
+          html += '<td style="white-space:nowrap;">';
+          html += '<button class="btn btn-sm btn-outline" onclick="openEditModal(\'' + q.id + '\')" style="margin-right:4px;">编辑</button>';
+          if (q.status === 'pending') {
+            html += '<button class="btn btn-sm btn-secondary" onclick="approve(\'' + q.id + '\')" style="margin-right:4px;">通过</button>';
+            html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="reject(\'' + q.id + '\')" style="margin-right:4px;">驳回</button>';
+          }
+          html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteQuestion(\'' + q.id + '\')">删除</button>';
+          html += '</td></tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        updateBatchBar();
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    function toggleSelectAll() {
+      var checked = document.getElementById('select-all').checked;
+      document.querySelectorAll('.q-checkbox').forEach(function(cb) { cb.checked = checked; });
+      updateBatchBar();
+    }
+
+    function updateBatchBar() {
+      var selected = Array.from(document.querySelectorAll('.q-checkbox:checked')).map(function(cb) { return cb.value; });
+      var bar = document.getElementById('batch-bar');
+      if (!bar) return;
+      if (selected.length === 0) {
+        bar.innerHTML = '';
+      } else {
+        bar.innerHTML = '<span style="font-size:13px;color:var(--text-light);">已选 ' + selected.length + ' 题</span>' +
+          '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="batchDelete()">批量删除</button>';
+      }
+    }
+
+    async function batchDelete() {
+      var selected = Array.from(document.querySelectorAll('.q-checkbox:checked')).map(function(cb) { return cb.value; });
+      if (selected.length === 0) return;
+      if (!confirm('确定要删除选中的 ' + selected.length + ' 道题吗？此操作不可撤销。')) return;
+      var pw = prompt('请输入管理员密码确认批量删除：');
+      if (!pw) return;
+      try {
+        await api.adminBatchDelete(selected, pw);
+        showFlash('已删除 ' + selected.length + ' 道题', 'success');
+        loadAll();
+      } catch (e) {
+        showFlash('删除失败: ' + e.message, 'error');
+      }
+    }
+
+    // ─── Edit Question ───
+    var editingQuestionData = null;
+
+    async function openEditModal(qid) {
+      document.getElementById('edit-qid').value = qid;
+      document.getElementById('edit-password').value = '';
+      document.getElementById('edit-flash').innerHTML = '';
+      try {
+        var all = await api.getAllQuestions();
+        var q = all.find(function(x) { return x.id === qid; });
+        if (!q) { showFlash('题目不存在', 'error'); return; }
+        editingQuestionData = q;
+        document.getElementById('edit-content').value = q.content;
+        renderEditOptions(q.options);
+        document.getElementById('edit-dimension').value = q.dimension || '';
+        document.getElementById('edit-weight').value = q.weight || 1.0;
+        document.getElementById('edit-timelimit').value = q.time_limit || 0;
+        document.getElementById('edit-tags').value = (q.tags || []).join(', ');
+        document.getElementById('edit-modal').style.display = 'block';
+      } catch (e) {
+        showFlash('加载失败: ' + e.message, 'error');
+      }
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    function renderEditOptions(options) {
+      var container = document.getElementById('edit-options');
+      var html = '';
+      for (var i = 0; i < options.length; i++) {
+        html += renderEditOptionRow(i, options[i].text, options[i].score);
+      }
+      container.innerHTML = html;
+    }
+
+    function renderEditOptionRow(index, text, score) {
+      return '<div class="edit-option-row" style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">' +
+        '<span style="font-size:13px;color:var(--text-light);white-space:nowrap;min-width:20px;">' + (index + 1) + '.</span>' +
+        '<input type="text" class="form-input edit-opt-text" value="' + escapeHtml(text || '') + '" placeholder="选项文字" style="flex:1;">' +
+        '<input type="number" class="form-input edit-opt-score" value="' + (score != null ? score : 0) + '" placeholder="分数" style="width:70px;">' +
+        '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;padding:4px 8px;" onclick="this.parentElement.remove()">✕</button>' +
+        '</div>';
+    }
+
+    function addEditOption() {
+      var container = document.getElementById('edit-options');
+      var div = document.createElement('div');
+      div.innerHTML = renderEditOptionRow(container.children.length, '', 0);
+      container.appendChild(div.firstElementChild);
+    }
+
+    async function saveEdit() {
+      var qid = document.getElementById('edit-qid').value;
+      var password = document.getElementById('edit-password').value;
+      if (!password) {
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-error">请输入管理员密码确认修改</div>';
+        return;
+      }
+      var optionRows = document.querySelectorAll('#edit-options .edit-option-row');
+      var options = [];
+      for (var i = 0; i < optionRows.length; i++) {
+        var text = optionRows[i].querySelector('.edit-opt-text').value.trim();
+        var score = parseFloat(optionRows[i].querySelector('.edit-opt-score').value) || 0;
+        if (text) { options.push({ text: text, score: score }); }
+      }
+      if (options.length < 2) {
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-error">至少需要 2 个选项</div>';
+        return;
+      }
+      var data = {
+        password: password,
+        content: document.getElementById('edit-content').value,
+        options: options,
+        dimension: document.getElementById('edit-dimension').value.trim(),
+        weight: parseFloat(document.getElementById('edit-weight').value) || 1.0,
+        time_limit: parseInt(document.getElementById('edit-timelimit').value) || 0,
+        tags: document.getElementById('edit-tags').value.split(',').map(function(s) { return s.trim(); }).filter(Boolean),
+      };
+      try {
+        await api.updateQuestion(qid, data);
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-success">修改成功</div>';
+        document.getElementById('edit-password').value = '';
+        setTimeout(function() { closeEditModal(); loadAll(); }, 800);
+      } catch (e) {
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-error">' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    // ─── Complaints ───
+    async function loadComplaints() {
+      var container = document.getElementById('admin-content');
+      try {
+        var data = await api.getComplaints();
+        if (!data.length) {
+          container.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无投诉记录</p>';
+          return;
+        }
+        var highRisk = [];
+        var minor = [];
+        data.forEach(function(c) {
+          if (c.ratio >= 0.1 && c.complaint_count >= 5) { highRisk.push(c); }
+          else { minor.push(c); }
+        });
+        var html = '';
+        if (highRisk.length) {
+          html += '<p class="threshold-note" style="color:#c62828;">⚠ 以下题目投诉比例较高，建议优先处理</p>';
+          highRisk.forEach(function(c) { html += renderComplaintCard(c, true); });
+        }
+        if (minor.length) {
+          html += '<p class="threshold-note">以下题目投诉比例较低，' + minor.length + ' 条</p>';
+          html += '<a class="toggle-link" onclick="toggleMinor()" id="minor-toggle">展开查看低比例投诉 ▼</a>';
+          html += '<div class="minor-list" id="minor-list">';
+          minor.forEach(function(c) { html += renderComplaintCard(c, false); });
+          html += '</div>';
+        }
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    function renderComplaintCard(c, highRisk) {
+      var pct = (c.ratio * 100).toFixed(1);
+      var badgeClass = highRisk ? 'badge-danger' : (c.ratio >= 0.05 ? 'badge-warning' : 'badge-ok');
+      var cardClass = highRisk ? 'complaint-card high-risk' : 'complaint-card low-risk';
+      return '<div class="' + cardClass + '">' +
+        '<div class="complaint-header">' +
+          '<div class="complaint-body">' +
+            '<div class="qtext">' + escapeHtml(c.question_content) + '</div>' +
+            '<div class="complaint-meta">' +
+              '<span>投诉 <strong>' + c.complaint_count + '</strong> 次</span>' +
+              '<span>答题 <strong>' + c.answered_count + '</strong> 人</span>' +
+              '<span><span class="badge ' + badgeClass + '">投诉率 ' + pct + '%</span></span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="complaint-actions">' +
+            '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteQuestion(\'' + c.question_id + '\')">删除此题</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var minorVisible = false;
+    function toggleMinor() {
+      minorVisible = !minorVisible;
+      document.getElementById('minor-list').classList.toggle('show', minorVisible);
+      document.getElementById('minor-toggle').textContent = minorVisible ? '收起低比例投诉 ▲' : '展开查看低比例投诉 ▼';
+    }
+
+    // ─── Users ───
+    async function loadUsers() {
+      var container = document.getElementById('admin-content');
+      try {
+        var users = await api.adminUsers();
+        var html = '<div class="section-title">用户管理 (' + users.length + ' 人)</div>';
+        for (var i = 0; i < users.length; i++) {
+          var u = users[i];
+          html += '<div class="user-row">';
+          html += '<div class="user-info"><span class="email">' + escapeHtml(u.email) + '</span>';
+          html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + (u.created_at || '').slice(0,10) + '</span></div>';
+          html += '<div>';
+          if (!u.banned) {
+            html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="banUser(\'' + u.id + '\')">封禁</button>';
+          } else {
+            html += '<button class="btn btn-sm btn-secondary" onclick="unbanUser(\'' + u.id + '\')">解封</button>';
+          }
+          html += '</div></div>';
+        }
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    async function banUser(id) {
+      if (!confirm('确定要封禁此用户吗？')) return;
+      try { await api.adminBanUser(id, 1); showFlash('已封禁', 'success'); loadUsers(); }
+      catch (e) { showFlash(e.message, 'error'); }
+    }
+    async function unbanUser(id) {
+      try { await api.adminBanUser(id, 0); showFlash('已解封', 'success'); loadUsers(); }
+      catch (e) { showFlash(e.message, 'error'); }
+    }
+
+    // ─── Tags ───
+    async function loadTags() {
+      var container = document.getElementById('admin-content');
+      try {
+        var tags = await api.adminTags();
+        var html = '<div class="section-title">题目标签 (' + tags.length + ')</div><div>';
+        for (var i = 0; i < tags.length; i++) {
+          html += '<span class="tag-chip">' + escapeHtml(tags[i].name) + ' (' + tags[i].question_count + '题)</span>';
+        }
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    // ─── Logs ───
+    async function loadLogs() {
+      var container = document.getElementById('admin-content');
+      try {
+        var logs = await api.adminLogs();
+        var html = '<div class="section-title">操作日志 (' + logs.length + ' 条)</div>';
+        for (var i = 0; i < logs.length; i++) {
+          var l = logs[i];
+          html += '<div class="log-entry">';
+          html += '<span class="log-time">' + (l.created_at || '').slice(0,19).replace('T', ' ') + '</span>';
+          html += '<span class="log-action">' + l.action + '</span>';
+          html += '<span class="log-detail">' + (l.detail || '') + '</span>';
+          html += '<span style="color:var(--text-light);font-size:12px;margin-left:auto;">' + l.ip + '</span>';
+          html += '</div>';
+        }
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
+      }
+    }
+
+    // ─── Settings ───
+    async function loadSettings() {
+      var container = document.getElementById('admin-content');
+      var html = '<div class="section-title">修改管理员密码</div>';
+      html += '<div class="settings-form">';
+      html += '<label>旧密码</label>';
+      html += '<input type="password" id="set-old-pw" placeholder="输入旧密码">';
+      html += '<label>新密码（至少 6 位）</label>';
+      html += '<input type="password" id="set-new-pw" placeholder="输入新密码">';
+      html += '<button class="btn btn-primary" onclick="changePwd()">修改密码</button>';
+      html += '</div>';
+      html += '<hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">';
+      html += '<div class="section-title">导出数据</div>';
+      html += '<p style="color:var(--text-light);font-size:13px;margin-bottom:12px;">导出所有测试记录为 JSON 格式</p>';
+      html += '<button class="btn btn-primary" onclick="exportData()">导出测试记录</button>';
+      container.innerHTML = html;
+    }
+
+    async function changePwd() {
+      var oldPw = document.getElementById('set-old-pw');
+      var newPw = document.getElementById('set-new-pw');
+      if (!oldPw.value || !newPw.value) { showFlash('请填完所有字段', 'error'); return; }
+      if (newPw.value.length < 6) { showFlash('新密码至少 6 位', 'error'); return; }
+      try {
+        await api.adminChangePassword(oldPw.value, newPw.value);
+        showFlash('密码修改成功', 'success');
+        oldPw.value = '';
+        newPw.value = '';
+      } catch (e) {
+        showFlash(e.message, 'error');
+      }
+    }
+
+    async function exportData() {
+      try {
+        var data = await api.adminExport();
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'test-records-' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showFlash('数据已导出', 'success');
+      } catch (e) {
+        showFlash('导出失败: ' + e.message, 'error');
+      }
+    }
+
+    // ─── Shared ───
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    async function approve(id) {
+      try { await api.reviewQuestion(id, 'approved'); showFlash('已通过', 'success'); loadPending(); }
+      catch (e) { showFlash(e.message, 'error'); }
+    }
+    async function reject(id) {
+      try { await api.reviewQuestion(id, 'rejected'); showFlash('已驳回', 'success'); loadPending(); }
+      catch (e) { showFlash(e.message, 'error'); }
+    }
+    async function deleteQuestion(id) {
+      var pw = prompt('请输入管理员密码确认删除：');
+      if (!pw) return;
+      try {
+        await api.adminDeleteQuestion(id, pw);
+        showFlash('已删除', 'success');
+        if (currentTab === 'all') loadAll();
+        else if (currentTab === 'complaints') loadComplaints();
+      }
+      catch (e) { showFlash(e.message, 'error'); }
+    }
+
+    function showFlash(msg, type) {
+      var container = document.getElementById('flash-container');
+      if (!container) return;
+      container.innerHTML = '<div class="flash flash-' + type + '">' + msg + '</div>';
+      setTimeout(function() { if (container) container.innerHTML = ''; }, 3000);
+    }
+  </script>
+
+  <!-- Edit Question Modal -->
+  <div id="edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;overflow-y:auto;" onclick="if(event.target===this)closeEditModal()">
+    <div style="background:#fff;max-width:700px;margin:40px auto;border-radius:12px;padding:24px;position:relative;">
+      <h3 style="color:var(--primary-dark);margin-bottom:16px;">编辑题目</h3>
+      <div id="edit-flash"></div>
+      <input type="hidden" id="edit-qid">
+
+      <div class="form-group">
+        <label>题目内容</label>
+        <textarea id="edit-content" class="form-input" rows="3"></textarea>
+      </div>
+
+      <div id="edit-options"></div>
+      <button class="btn btn-sm btn-outline" onclick="addEditOption()" style="margin-bottom:12px;">+ 添加选项</button>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>维度</label>
+          <input type="text" id="edit-dimension" class="form-input" placeholder="如：消费与风控">
+        </div>
+        <div class="form-group">
+          <label>权重</label>
+          <input type="number" id="edit-weight" class="form-input" step="0.5" value="1.0">
+        </div>
+        <div class="form-group">
+          <label>限时（秒，0=不限）</label>
+          <input type="number" id="edit-timelimit" class="form-input" value="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>标签（逗号分隔）</label>
+        <input type="text" id="edit-tags" class="form-input" placeholder="如：消费观, 财务管理">
+      </div>
+
+      <hr style="margin:16px 0;border:none;border-top:2px solid #f0f0f0;">
+
+      <div class="form-group">
+        <label style="color:#e88d9e;font-weight:600;">管理员密码（修改必需）</label>
+        <input type="password" id="edit-password" class="form-input" placeholder="输入管理员密码确认修改">
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="closeEditModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEdit()">保存修改</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

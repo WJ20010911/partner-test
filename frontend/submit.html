@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上传题库 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/index.html">首页</a>
+      <a href="#" onclick="logout()" style="color:#e88d9e;">退出</a>
+    </div>
+  </nav>
+  <div class="container">
+    <div class="card">
+      <h2 style="color:var(--primary-dark);margin-bottom:16px;">上传题库</h2>
+      <p style="color:var(--text-light);margin-bottom:20px;">出题审核通过后，会在测试中随机出现。</p>
+      <div id="flash-container"></div>
+      <div style="background:#fff3cd;border:1px solid #ffeeba;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:0.9em;color:#856404;">
+        <strong>⚠️ 注意：分数是反着给的</strong><br>
+        最正确的选项应填在 <strong>0 分</strong>（得分最低），<br>
+        最离谱/最不理想的选项应填在 <strong>3 分</strong>（得分最高），<br>
+        旨在麻痹做题人，防止猜出真实评分逻辑。
+      </div>
+      <div class="form-group">
+        <label for="q-content">题干</label>
+        <textarea id="q-content" class="form-input" placeholder="描述一个场景或问题..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>题目分类</label>
+        <select id="q-dimension" class="form-input">
+          <option value="">—— 选择分类 ——</option>
+          <option value="智力题">智力题</option>
+          <option value="三观题">三观题</option>
+          <option value="情感价值观">情感价值观</option>
+          <option value="情景判断">情景判断</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div id="options-container">
+        <div class="form-group">
+          <label>0 分选项（最正确 — 得分最低）</label>
+          <input type="text" class="form-input option-text" placeholder="最正确的反应（0分）" data-opt="0">
+        </div>
+        <div class="form-group">
+          <label>1 分选项</label>
+          <input type="text" class="form-input option-text" placeholder="较不理想的反应" data-opt="1">
+        </div>
+        <div class="form-group">
+          <label>2 分选项</label>
+          <input type="text" class="form-input option-text" placeholder="较理想的反应" data-opt="2">
+        </div>
+        <div class="form-group">
+          <label>3 分选项（最离谱 — 得分最高）</label>
+          <input type="text" class="form-input option-text" placeholder="最离谱的反应（3分）" data-opt="3">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>答题时限（秒）</label>
+        <input type="number" id="q-time-limit" class="form-input" value="15" min="10" max="60" style="max-width:120px;">
+        <span style="color:var(--text-light);font-size:0.85em;">最短 10 秒，最长 60 秒</span>
+      </div>
+      <div class="form-group">
+        <label>标签（用逗号分隔）</label>
+        <input type="text" id="q-tags" class="form-input" placeholder="例如: 情感, 物质, 独立">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doSubmit()">提交审核</button>
+    </div>
+  </div>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    // Auth check — redirect to login if not logged in
+    if (!api.isLoggedIn()) {
+      window.location.href = '/login.html';
+    }
+
+    function logout() { api.clearToken(); window.location.href = '/index.html'; }
+    async function doSubmit() {
+      const content = document.getElementById('q-content').value.trim();
+      if (!content) { showFlash('请输入题干', 'error'); return; }
+      const opts = document.querySelectorAll('.option-text');
+      const options = [];
+      opts.forEach(function(o) {
+        if (o.value.trim()) options.push({ text: o.value.trim(), score: parseInt(o.dataset.opt) });
+      });
+      if (options.length < 4) { showFlash('请填写全部 4 个选项', 'error'); return; }
+      const dimension = document.getElementById('q-dimension').value || null;
+      const timeLimit = parseInt(document.getElementById('q-time-limit').value) || 15;
+      const tags = document.getElementById('q-tags').value.split(',').map(function(t) { return t.trim(); }).filter(Boolean);
+      try {
+        const res = await api.submitQuestion({ content: content, options: options, dimension: dimension, tags: tags, time_limit: timeLimit });
+        showFlash('提交成功，等待管理员审核', 'success');
+        document.getElementById('q-content').value = '';
+        document.querySelectorAll('.option-text').forEach(function(o) { o.value = ''; });
+        document.getElementById('q-tags').value = '';
+      } catch (e) {
+        showFlash('提交失败: ' + e.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
