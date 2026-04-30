@@ -67,6 +67,9 @@ const api = {
   // Public stats
   getPublicStats() { return this.get('/api/public-stats'); },
 
+  // Tester nickname
+  setTesterNickname(token, nickname) { return this.post('/api/tester/nickname', { token, nickname }); },
+
   // Admin delete with password
   adminDeleteQuestion(id, password) { return this.post('/api/admin/questions/delete', { id, password }); },
   adminBatchDelete(ids, password) { return this.post('/api/admin/questions/batch-delete', { ids, password }); },

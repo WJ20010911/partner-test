@@ -94,6 +94,11 @@ def init_db():
             ip TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS tester_nicknames (
+            token TEXT PRIMARY KEY,
+            nickname TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
     """)
     # Add banned column to users if not exists
     try:
@@ -665,21 +670,72 @@ def handle_admin_batch_delete(headers, body):
 def handle_contributors(headers):
     conn = get_db()
     try:
-        rows = conn.execute(
-            "SELECT DISTINCT u.id, u.username, u.email FROM users u "
-            "INNER JOIN questions q ON q.submitter_id = u.id "
+        sort = parse_qs(urlparse(headers.get("X-Original-URL", "")).query).get("sort", ["time"])[0]
+
+        # Uploaders: users who submitted approved questions
+        uploaders = conn.execute(
+            "SELECT u.username, u.email, COUNT(q.id) as qcount, MAX(q.created_at) as last_time "
+            "FROM users u INNER JOIN questions q ON q.submitter_id = u.id "
             "WHERE q.status = 'approved' "
-            "ORDER BY u.username ASC"
+            "GROUP BY u.id"
         ).fetchall()
+
+        # Testers: testers who set a nickname
+        testers = conn.execute(
+            "SELECT tn.nickname, tn.created_at as last_time, COUNT(DISTINCT t.id) as test_count "
+            "FROM tester_nicknames tn "
+            "LEFT JOIN test_records t ON t.token = tn.token "
+            "GROUP BY tn.token"
+        ).fetchall()
+
         result = []
-        for r in rows:
+        for r in uploaders:
+            name = r["username"] or r["email"].split("@")[0]
             result.append({
-                "username": r["username"] or r["email"].split("@")[0],
-                "email": r["email"]
+                "type": "uploader",
+                "username": name,
+                "count": r["qcount"],
+                "time": r["last_time"]
             })
+        for r in testers:
+            result.append({
+                "type": "tester",
+                "username": r["nickname"],
+                "count": r["test_count"],
+                "time": r["last_time"]
+            })
+
+        if sort == "count":
+            result.sort(key=lambda x: -x["count"])
+        else:
+            result.sort(key=lambda x: x.get("time", ""), reverse=True)
+
         return json_response(result)
     finally:
         conn.close()
+
+def handle_set_tester_nickname(body):
+    try:
+        data = json.loads(body)
+        token = data.get("token", "").strip()
+        nickname = data.get("nickname", "").strip()
+        if not token or not nickname:
+            return json_response({"detail": "缺少 token 或昵称"}, 400)
+        if len(nickname) > 20:
+            return json_response({"detail": "昵称最长 20 个字符"}, 400)
+        conn = get_db()
+        try:
+            now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            conn.execute(
+                "INSERT OR REPLACE INTO tester_nicknames (token, nickname, created_at) VALUES (?, ?, ?)",
+                (token, nickname, now)
+            )
+            conn.commit()
+            return json_response({"ok": True})
+        finally:
+            conn.close()
+    except json.JSONDecodeError:
+        return json_response({"detail": "无效的请求"}, 400)
 
 def handle_public_stats(headers, body, *args):
     conn = get_db()
@@ -1055,6 +1111,7 @@ route("GET", r"/api/admin/question-counts")(lambda h, b, *a: handle_question_cou
 route("POST", r"/api/admin/batch-insert-test")(lambda h, b, *a: handle_batch_insert_test_questions(h, b))
 route("GET", r"/api/contributors")(lambda h, b, *a: handle_contributors(h))
 route("GET", r"/api/public-stats")(lambda h, b, *a: handle_public_stats(h, b))
+route("POST", r"/api/tester/nickname")(lambda h, b, *a: handle_set_tester_nickname(b))
 route("PATCH", r"/api/questions/([a-f0-9]+)/edit")(lambda h, b, qid: handle_edit_question(h, qid, b))
 route("GET", r"/api/questions/all")(lambda h, b, *a: handle_all_questions(h))
 route("POST", r"/api/admin/questions/delete")(lambda h, b, *a: handle_admin_delete_question(h, b))

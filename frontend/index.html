@@ -49,57 +49,146 @@
   <script src="/js/utils.js"></script>
   <script>
     // ── 致谢窗口 ──
+    var currentSort = 'time';
+
+    function renderContributors(list) {
+      var sort = currentSort;
+      var sorted = list.slice();
+      if (sort === 'count') {
+        sorted.sort(function(a, b) { return b.count - a.count; });
+      } else {
+        sorted.sort(function(a, b) { return (a.time || '') < (b.time || '') ? 1 : -1; });
+      }
+
+      // Reuse existing overlay or create new
+      var overlay = document.getElementById('contrib-overlay');
+      if (!overlay) return;
+      var box = overlay.querySelector('.contrib-box');
+      if (!box) return;
+
+      // Keep title and sort bar, replace list
+      var title = box.querySelector('.contrib-title');
+      var sortBar = box.querySelector('.contrib-sort');
+      var oldList = box.querySelector('.contrib-list');
+      var closeBtn = box.querySelector('.contrib-close');
+
+      // Clear everything after sort bar
+      while (box.lastChild && box.lastChild !== sortBar) {
+        if (box.lastChild === closeBtn) { box.removeChild(closeBtn); break; }
+        box.removeChild(box.lastChild);
+      }
+
+      var listDiv = document.createElement('div');
+      listDiv.className = 'contrib-list';
+      listDiv.style.cssText = 'max-height:300px;overflow-y:auto;margin-bottom:12px;';
+
+      if (sorted.length === 0) {
+        var empty = document.createElement('p');
+        empty.style.cssText = 'color:var(--text-light);text-align:center;padding:20px 0;';
+        empty.textContent = '暂无贡献者';
+        listDiv.appendChild(empty);
+      } else {
+        sorted.forEach(function(item) {
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);';
+
+          var nameSpan = document.createElement('span');
+          nameSpan.style.cssText = 'font-size:14px;color:var(--text);';
+          if (item.type === 'tester') {
+            nameSpan.textContent = '🧪 ' + item.username;
+          } else {
+            nameSpan.textContent = '📝 ' + item.username;
+          }
+          row.appendChild(nameSpan);
+
+          var countSpan = document.createElement('span');
+          countSpan.style.cssText = 'font-size:13px;color:var(--text-muted);';
+          if (item.type === 'uploader') {
+            countSpan.textContent = item.count + ' 题';
+          } else {
+            countSpan.textContent = item.count + ' 次测试';
+          }
+          row.appendChild(countSpan);
+
+          listDiv.appendChild(row);
+        });
+      }
+
+      box.insertBefore(listDiv, closeBtn);
+      box.appendChild(closeBtn);
+    }
+
     function showContributors() {
+      if (document.getElementById('contrib-overlay')) return;
+
+      var overlay = document.createElement('div');
+      overlay.id = 'contrib-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;';
+
+      var box = document.createElement('div');
+      box.className = 'contrib-box';
+      box.style.cssText = 'background:#fff;max-width:420px;width:90%;border-radius:12px;padding:24px;position:relative;';
+
+      var title = document.createElement('h3');
+      title.className = 'contrib-title';
+      title.style.cssText = 'color:var(--primary-dark);margin-bottom:12px;';
+      title.textContent = '致谢';
+      box.appendChild(title);
+
+      var hint = document.createElement('p');
+      hint.style.cssText = 'color:var(--text-light);font-size:13px;margin-bottom:12px;';
+      hint.textContent = '📝 上传题目者  🧪 参与测试者';
+      box.appendChild(hint);
+
+      // Sort buttons
+      var sortBar = document.createElement('div');
+      sortBar.className = 'contrib-sort';
+      sortBar.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+
+      var sortTime = document.createElement('button');
+      sortTime.className = 'btn btn-sm' + (currentSort === 'time' ? ' btn-primary' : ' btn-secondary');
+      sortTime.textContent = '⏱ 最新';
+      sortTime.onclick = function() {
+        currentSort = 'time';
+        api.getContributors().then(function(list) { renderContributors(list); });
+        sortTime.className = 'btn btn-sm btn-primary';
+        sortCount.className = 'btn btn-sm btn-secondary';
+      };
+      sortBar.appendChild(sortTime);
+
+      var sortCount = document.createElement('button');
+      sortCount.className = 'btn btn-sm' + (currentSort === 'count' ? ' btn-primary' : ' btn-secondary');
+      sortCount.textContent = '📊 题量';
+      sortCount.onclick = function() {
+        currentSort = 'count';
+        api.getContributors().then(function(list) { renderContributors(list); });
+        sortCount.className = 'btn btn-sm btn-primary';
+        sortTime.className = 'btn btn-sm btn-secondary';
+      };
+      sortBar.appendChild(sortCount);
+
+      box.appendChild(sortBar);
+
+      // Close button
+      var closeBtn = document.createElement('button');
+      closeBtn.className = 'btn btn-outline contrib-close';
+      closeBtn.style.cssText = 'margin-top:8px;width:100%;';
+      closeBtn.textContent = '关闭';
+      closeBtn.onclick = function() { overlay.remove(); };
+      box.appendChild(closeBtn);
+
+      overlay.appendChild(box);
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+      document.body.appendChild(overlay);
+
+      // Load and render
       api.getContributors().then(function(list) {
-        var names = list.map(function(c) { return c.username; }).filter(Boolean);
-
-        // Create overlay
-        var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;';
-
-        // Create modal box
-        var box = document.createElement('div');
-        box.style.cssText = 'background:#fff;max-width:400px;width:90%;border-radius:12px;padding:24px;position:relative;';
-
-        var title = document.createElement('h3');
-        title.style.cssText = 'color:var(--primary-dark);margin-bottom:16px;';
-        title.textContent = '致谢';
-        box.appendChild(title);
-
-        if (names.length === 0) {
-          var empty = document.createElement('p');
-          empty.style.cssText = 'color:var(--text-light);';
-          empty.textContent = '暂无贡献者';
-          box.appendChild(empty);
-        } else {
-          var hint = document.createElement('p');
-          hint.style.cssText = 'color:var(--text-light);margin-bottom:12px;';
-          hint.textContent = '感谢以下用户上传题目：';
-          box.appendChild(hint);
-
-          var wrap = document.createElement('div');
-          wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
-          names.forEach(function(name) {
-            var span = document.createElement('span');
-            span.style.cssText = 'display:inline-block;padding:6px 14px;background:#e8f4f8;color:var(--primary-dark);border-radius:16px;font-size:14px;';
-            span.textContent = name;
-            wrap.appendChild(span);
-          });
-          box.appendChild(wrap);
-        }
-
-        var closeBtn = document.createElement('button');
-        closeBtn.className = 'btn btn-outline';
-        closeBtn.style.cssText = 'margin-top:16px;width:100%;';
-        closeBtn.textContent = '关闭';
-        closeBtn.onclick = function() { overlay.remove(); };
-        box.appendChild(closeBtn);
-
-        overlay.appendChild(box);
-        overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
-        document.body.appendChild(overlay);
+        renderContributors(list);
       }).catch(function(e) {
-        showFlash('加载失败: ' + e.message, 'error');
+        var p = document.createElement('p');
+        p.style.cssText = 'color:var(--text-light);text-align:center;padding:20px;';
+        p.textContent = '加载失败: ' + e.message;
+        box.insertBefore(p, closeBtn);
       });
     }
 
