@@ -681,6 +681,14 @@ def handle_contributors(headers):
     finally:
         conn.close()
 
+def handle_public_stats(headers, body, *args):
+    conn = get_db()
+    try:
+        total = conn.execute("SELECT COUNT(*) as c FROM test_records").fetchone()["c"]
+        return json_response({"total_tests": total})
+    finally:
+        conn.close()
+
 # ── Admin all questions ─────────────────────────────
 
 def handle_all_questions(headers):
@@ -1046,6 +1054,7 @@ route("GET", r"/api/admin/config")(lambda h, b, *a: handle_admin_get_config(h))
 route("GET", r"/api/admin/question-counts")(lambda h, b, *a: handle_question_counts(h))
 route("POST", r"/api/admin/batch-insert-test")(lambda h, b, *a: handle_batch_insert_test_questions(h, b))
 route("GET", r"/api/contributors")(lambda h, b, *a: handle_contributors(h))
+route("GET", r"/api/public-stats")(lambda h, b, *a: handle_public_stats(h, b))
 route("PATCH", r"/api/questions/([a-f0-9]+)/edit")(lambda h, b, qid: handle_edit_question(h, qid, b))
 route("GET", r"/api/questions/all")(lambda h, b, *a: handle_all_questions(h))
 route("POST", r"/api/admin/questions/delete")(lambda h, b, *a: handle_admin_delete_question(h, b))

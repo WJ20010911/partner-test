@@ -64,6 +64,9 @@ const api = {
   // Contributors
   getContributors() { return this.get('/api/contributors'); },
 
+  // Public stats
+  getPublicStats() { return this.get('/api/public-stats'); },
+
   // Admin delete with password
   adminDeleteQuestion(id, password) { return this.post('/api/admin/questions/delete', { id, password }); },
   adminBatchDelete(ids, password) { return this.post('/api/admin/questions/batch-delete', { ids, password }); },

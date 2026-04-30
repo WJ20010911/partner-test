@@ -48,32 +48,73 @@
   <script src="/js/api.js"></script>
   <script src="/js/utils.js"></script>
   <script>
-    async function showContributors() {
-      try {
-        var list = await api.getContributors();
+    // ── 致谢窗口 ──
+    function showContributors() {
+      api.getContributors().then(function(list) {
         var names = list.map(function(c) { return c.username; }).filter(Boolean);
-        var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">' +
-          '<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:24px;position:relative;">' +
-          '<h3 style="color:var(--primary-dark);margin-bottom:16px;">致谢</h3>';
+
+        // Create overlay
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;';
+
+        // Create modal box
+        var box = document.createElement('div');
+        box.style.cssText = 'background:#fff;max-width:400px;width:90%;border-radius:12px;padding:24px;position:relative;';
+
+        var title = document.createElement('h3');
+        title.style.cssText = 'color:var(--primary-dark);margin-bottom:16px;';
+        title.textContent = '致谢';
+        box.appendChild(title);
+
         if (names.length === 0) {
-          html += '<p style="color:var(--text-light);">暂无贡献者</p>';
+          var empty = document.createElement('p');
+          empty.style.cssText = 'color:var(--text-light);';
+          empty.textContent = '暂无贡献者';
+          box.appendChild(empty);
         } else {
-          html += '<p style="color:var(--text-light);margin-bottom:12px;">感谢以下用户上传题目：</p>';
-          html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+          var hint = document.createElement('p');
+          hint.style.cssText = 'color:var(--text-light);margin-bottom:12px;';
+          hint.textContent = '感谢以下用户上传题目：';
+          box.appendChild(hint);
+
+          var wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
           names.forEach(function(name) {
-            html += '<span style="display:inline-block;padding:6px 14px;background:#e8f4f8;color:var(--primary-dark);border-radius:16px;font-size:14px;">' + name + '</span>';
+            var span = document.createElement('span');
+            span.style.cssText = 'display:inline-block;padding:6px 14px;background:#e8f4f8;color:var(--primary-dark);border-radius:16px;font-size:14px;';
+            span.textContent = name;
+            wrap.appendChild(span);
           });
-          html += '</div>';
+          box.appendChild(wrap);
         }
-        html += '<button class="btn btn-outline" style="margin-top:16px;width:100%;" onclick="this.closest(\'[style*=\\"fixed\\"]\').remove()">关闭</button>' +
-          '</div></div>';
-        var div = document.createElement('div');
-        div.innerHTML = html;
-        document.body.appendChild(div.firstElementChild);
-      } catch (e) {
+
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'btn btn-outline';
+        closeBtn.style.cssText = 'margin-top:16px;width:100%;';
+        closeBtn.textContent = '关闭';
+        closeBtn.onclick = function() { overlay.remove(); };
+        box.appendChild(closeBtn);
+
+        overlay.appendChild(box);
+        overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+        document.body.appendChild(overlay);
+      }).catch(function(e) {
         showFlash('加载失败: ' + e.message, 'error');
-      }
+      });
     }
+
+    // ── 已参与测试人数 ──
+    function loadTestCount() {
+      api.getPublicStats().then(function(data) {
+        document.getElementById('test-count').textContent = data.total_tests || 0;
+      }).catch(function() {
+        // silently ignore, keep current value
+      });
+    }
+
+    // 页面加载时立即更新，之后每 60 秒刷新一次
+    loadTestCount();
+    setInterval(loadTestCount, 60000);
   </script>
 </body>
 </html>
