@@ -4,7 +4,7 @@ import sqlite3
 import json
 import uuid
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "partner_test.db")
 
@@ -554,7 +554,7 @@ def rebuild():
     db.commit()
     print("Cleared old questions and related data.")
 
-    now = datetime.utcnow().isoformat() + 'Z'
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     inserted = 0
 
     for q in questions:

@@ -12,7 +12,7 @@ import uuid
 import os
 import re
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse, parse_qs
 
 PORT = int(os.environ.get("PORT", "8000"))
@@ -108,7 +108,7 @@ def init_db():
     # Ensure test_uploader user exists for test-login feature
     conn.execute(
         "INSERT OR IGNORE INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-        ("test_uploader", "test@local.dev", "", "user", datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+        ("test_uploader", "test@local.dev", "", "user", datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
     )
     conn.commit()
     conn.close()
@@ -131,7 +131,7 @@ def verify_password(password, stored):
         return False
 
 def make_token(user_id, role):
-    exp = int((datetime.now(datetime.UTC) + timedelta(hours=TOKEN_EXPIRY_HOURS)).timestamp())
+    exp = int((datetime.now(timezone.utc) + timedelta(hours=TOKEN_EXPIRY_HOURS)).timestamp())
     payload = json.dumps({"uid": user_id, "role": role, "exp": exp}, separators=(",", ":")).encode()
     sig = hmac.new(SECRET_KEY.encode(), payload, hashlib.sha256).hexdigest()
     data = json.dumps({"p": payload.decode(), "sig": sig})
@@ -144,7 +144,7 @@ def decode_token(token):
         expected = hmac.new(SECRET_KEY.encode(), data["p"].encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, data["sig"]):
             return None
-        if payload["exp"] < datetime.now(datetime.UTC).timestamp():
+        if payload["exp"] < datetime.now(timezone.utc).timestamp():
             return None
         return payload
     except Exception:
@@ -174,7 +174,7 @@ def require_admin(headers):
 # ── Crypto for test results ──────────────────────────────
 
 def generate_token(record_id, real_score):
-    ts = int(datetime.now(datetime.UTC).timestamp())
+    ts = int(datetime.now(timezone.utc).timestamp())
     payload = f"{record_id}|{real_score}|{ts}"
     sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
     data = json.dumps({"rid": record_id, "rs": real_score, "t": ts, "sig": sig})
@@ -229,7 +229,7 @@ def handle_register(body):
         uid = uuid.uuid4().hex[:8]
         conn.execute(
             "INSERT INTO users (id, email, password_hash, role, created_at, username) VALUES (?, ?, ?, ?, ?, ?)",
-            (uid, email, hash_password(password), "contributor", datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'), username)
+            (uid, email, hash_password(password), "contributor", datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), username)
         )
         conn.commit()
         token = make_token(uid, "contributor")
@@ -274,7 +274,7 @@ def handle_test_login(headers, body):
         if not existing:
             conn.execute(
                 "INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-                ("test_uploader", "test@local.dev", "", "user", datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+                ("test_uploader", "test@local.dev", "", "user", datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
             )
             conn.commit()
     finally:
@@ -328,7 +328,7 @@ def handle_create_question(headers, body):
         qid = uuid.uuid4().hex[:8]
         conn.execute(
             "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
-            (qid, content, json.dumps(options, ensure_ascii=False), dimension, weight, time_limit, user["uid"], datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            (qid, content, json.dumps(options, ensure_ascii=False), dimension, weight, time_limit, user["uid"], datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         for tag_name in tags:
             tag_name = tag_name.strip()
@@ -415,7 +415,7 @@ def handle_submit_test(headers, body):
                 sid = uuid.uuid4().hex[:8]
                 conn.execute(
                     "INSERT INTO question_skips (id, question_id, reason, created_at) VALUES (?, ?, 'complaint', ?)",
-                    (sid, qid, datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+                    (sid, qid, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
                 )
             elif time_limit > 0 and time_taken > time_limit + 2:
                 real_score += 10.0 * w
@@ -429,7 +429,7 @@ def handle_submit_test(headers, body):
         token = generate_token(rid, real_score)
         conn.execute(
             "INSERT INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
         return json_response({
@@ -437,7 +437,7 @@ def handle_submit_test(headers, body):
             "surface_score": surface_score,
             "short_code": generate_short_code(real_score),
             "real_token": token,
-            "created_at": datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "created_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         })
     finally:
         conn.close()
@@ -533,7 +533,7 @@ def handle_record_skip(headers, body):
         sid = uuid.uuid4().hex[:8]
         conn.execute(
             "INSERT INTO question_skips (id, question_id, reason, created_at) VALUES (?, ?, ?, ?)",
-            (sid, question_id, reason, datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            (sid, question_id, reason, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
         return json_response({"id": sid})
@@ -770,7 +770,7 @@ ADMIN_RATE_LIMIT = 5        # max attempts
 ADMIN_RATE_WINDOW = 300     # 5 minutes
 
 def check_admin_rate_limit(ip):
-    now = datetime.now(datetime.UTC).timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     attempts = _admin_login_attempts.get(ip, [])
     # Remove expired entries
     attempts = [t for t in attempts if now - t < ADMIN_RATE_WINDOW]
@@ -778,7 +778,7 @@ def check_admin_rate_limit(ip):
     return len(attempts) >= ADMIN_RATE_LIMIT
 
 def record_admin_attempt(ip):
-    _admin_login_attempts.setdefault(ip, []).append(datetime.now(datetime.UTC).timestamp())
+    _admin_login_attempts.setdefault(ip, []).append(datetime.now(timezone.utc).timestamp())
 
 def verify_admin_password(password):
     if not ADMIN_PASSWORD_HASH:
@@ -808,7 +808,7 @@ def log_admin_action(headers, action, detail=""):
             "INSERT INTO admin_logs (id, action, detail, ip, created_at) VALUES (?, ?, ?, ?, ?)",
             (uuid.uuid4().hex[:8], action, detail,
              headers.get("X-Forwarded-For", headers.get("Remote-Addr", "unknown")),
-             datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'))
+             datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
     finally:
@@ -1248,7 +1248,7 @@ def handle_batch_insert_test_questions(headers, body):
             existing = per_dimension.get(d, 0)
             if existing + cnt > 50:
                 return error_response(f"维度「{d}」已接近上限（{existing} 道），无法批量添加 {cnt} 道", 400)
-        now = datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         inserted = 0
         for q in TEST_QUESTIONS_POOL:
             qid = uuid.uuid4().hex[:8]
