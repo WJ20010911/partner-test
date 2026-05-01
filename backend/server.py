@@ -14,6 +14,8 @@ import re
 import random
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse, parse_qs
+import urllib.request
+import urllib.error
 
 PORT = int(os.environ.get("PORT", "8000"))
 DB_PATH = os.path.join(os.path.dirname(__file__), "partner_test.db")
@@ -22,6 +24,8 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "123123")
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 QUESTION_COUNT_PER_TEST = 12
 TOKEN_EXPIRY_HOURS = 72
+BAIDU_API_KEY = os.environ.get("BAIDU_API_KEY", "")
+BAIDU_SECRET_KEY = os.environ.get("BAIDU_SECRET_KEY", "")
 
 MIME_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -252,8 +256,71 @@ BLOCKED_WORDS = [
     "巨婴",
 ]
 
+# ── Baidu Cloud content review (text censor) ────────────
+# Uses Baidu AI Cloud text moderation API when credentials are configured.
+# https://cloud.baidu.com/doc/ANTIPORN/s/nkfb6u3bi
+
+_baidu_token = None
+_baidu_token_expiry = 0
+
+
+def _baidu_get_token():
+    """Obtain Baidu API access token. Cached for 25 days."""
+    global _baidu_token, _baidu_token_expiry
+    now = datetime.now(timezone.utc).timestamp()
+    if _baidu_token and now < _baidu_token_expiry:
+        return _baidu_token
+    url = ("https://aip.baidubce.com/oauth/2.0/token"
+           f"?client_id={BAIDU_API_KEY}&client_secret={BAIDU_SECRET_KEY}&grant_type=client_credentials")
+    data = json.dumps("").encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Accept", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            token = result.get("access_token")
+            if token:
+                _baidu_token = token
+                _baidu_token_expiry = now + 25 * 86400
+                return token
+    except Exception:
+        pass
+    return None
+
+
+def _baidu_text_censor(text):
+    """Call Baidu text censor API. Returns (is_valid, reason)."""
+    token = _baidu_get_token()
+    if not token:
+        return None, None
+    url = f"https://aip.baidubce.com/rest/2.0/solution/v1/text_censor/v2/user_defined?access_token={token}"
+    body = json.dumps({"text": text}, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(url, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            ct = result.get("conclusionType", 1)
+            if ct == 1:
+                return True, None
+            data = result.get("data", [])
+            reason = data[0]["msg"] if data else "审核不通过"
+            return False, reason
+    except Exception:
+        return None, None
+
+
 def validate_text(text):
-    """Check if text contains any blocked word. Returns (is_valid, first_blocked_word)."""
+    """Check text via Baidu API + local blocked words. Returns (is_valid, reason)."""
+    # 1) Baidu API (if configured)
+    if BAIDU_API_KEY and BAIDU_SECRET_KEY:
+        ok, reason = _baidu_text_censor(text)
+        if ok is not None:
+            if ok:
+                return True, None
+            return False, reason
+    # 2) Local blocked words (fallback)
     lower = text.lower()
     for word in BLOCKED_WORDS:
         if word.lower() in lower:
