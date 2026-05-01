@@ -65,6 +65,10 @@
     .log-entry .log-detail { color:var(--text-light); }
     .section-title { font-size:15px; font-weight:600; color:var(--primary-dark); margin-bottom:12px; margin-top:20px; }
     .section-title:first-child { margin-top:0; }
+    .pending-badge { display:none; background:#e53935; color:#fff; font-size:11px; font-weight:700; padding:1px 7px; border-radius:10px; margin-left:5px; vertical-align:top; line-height:1.5; }
+    .pending-badge.show { display:inline-block; }
+    @keyframes badge-pop { 0%{transform:scale(0.5)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+    .pending-badge.pop { animation:badge-pop .3s ease-out; }
   </style>
 </head>
 <body>
@@ -103,7 +107,7 @@
       <div id="flash-container"></div>
       <div class="tab-bar">
         <button class="active" id="tab-overview" onclick="switchTab('overview')">概览</button>
-        <button id="tab-pending" onclick="switchTab('pending')">待审核</button>
+        <button id="tab-pending" onclick="switchTab('pending')">待审核<span id="pending-badge" class="pending-badge"></span></button>
         <button id="tab-all" onclick="switchTab('all')">全部题库</button>
         <button id="tab-complaints" onclick="switchTab('complaints')">投诉</button>
         <button id="tab-users" onclick="switchTab('users')">用户</button>
@@ -120,6 +124,7 @@
   <script>
     var ADMIN_TOKEN_KEY = 'admin_token';
     var currentTab = 'overview';
+    var pendingPollTimer = null;
 
     function getAdminToken() { return localStorage.getItem(ADMIN_TOKEN_KEY); }
     function setAdminToken(t) { localStorage.setItem(ADMIN_TOKEN_KEY, t); }
@@ -149,6 +154,9 @@
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-main').style.display = 'block';
       loadOverview();
+      updatePendingBadge();
+      if (pendingPollTimer) clearInterval(pendingPollTimer);
+      pendingPollTimer = setInterval(updatePendingBadge, 60000);
     }
 
     function switchTab(tab) {
@@ -159,7 +167,14 @@
       var container = document.getElementById('admin-content');
       container.innerHTML = '<div class="spinner"></div>';
       if (tab === 'overview') loadOverview();
-      else if (tab === 'pending') loadPending();
+      else if (tab === 'pending') {
+        loadPending();
+        // Mark all pending as seen
+        api.adminQuestionStats().then(function(qs) {
+          localStorage.setItem('lastSeenPending', qs.pending || 0);
+          updatePendingBadge();
+        }).catch(function() {});
+      }
       else if (tab === 'all') loadAll();
       else if (tab === 'complaints') loadComplaints();
       else if (tab === 'users') loadUsers();
@@ -288,7 +303,8 @@
       switchTab('all');
     }
 
-    function onSearchInput(val) {
+    function doSearch() {
+      var val = document.getElementById('q-search').value;
       searchQuery = val.toLowerCase();
       renderAllTable();
     }
@@ -317,8 +333,9 @@
       var html = '<div class="section-title">全部题库 (' + filtered.length + ' / ' + allQuestions.length + ' 题)</div>';
 
       // Search bar
-      html += '<div style="margin-bottom:10px;">';
-      html += '<input type="text" id="q-search" placeholder="搜索题干或选项..." value="' + escapeHtml(searchQuery) + '" oninput="onSearchInput(this.value)" style="width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">';
+      html += '<div style="margin-bottom:10px;display:flex;gap:8px;">';
+      html += '<input type="text" id="q-search" placeholder="搜索题干或选项..." value="' + escapeHtml(searchQuery) + '" onkeydown="if(event.key===\'Enter\')doSearch()" style="flex:1;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">';
+      html += '<button class="btn btn-primary" onclick="doSearch()" style="white-space:nowrap;">搜索</button>';
       html += '</div>';
 
       // Tag filter indicator
@@ -419,6 +436,29 @@
       } catch (e) {
         showFlash('设置失败: ' + e.message, 'error');
       }
+    }
+
+    // ─── Pending Badge ───
+    function updatePendingBadge() {
+      api.adminQuestionStats().then(function(qs) {
+        var total = qs.pending || 0;
+        var lastSeen = parseInt(localStorage.getItem('lastSeenPending') || '0');
+        var diff = total - lastSeen;
+        var badge = document.getElementById('pending-badge');
+        if (!badge) return;
+        if (diff > 0) {
+          badge.textContent = '+' + diff;
+          if (!badge.classList.contains('show')) {
+            badge.classList.add('show', 'pop');
+            setTimeout(function() { badge.classList.remove('pop'); }, 300);
+          }
+        } else if (total > 0) {
+          badge.textContent = total;
+          badge.classList.add('show');
+        } else {
+          badge.classList.remove('show');
+        }
+      }).catch(function() {});
     }
 
     // ─── Edit Question ───
@@ -718,11 +758,11 @@
     }
 
     async function approve(id) {
-      try { await api.reviewQuestion(id, 'approved'); showFlash('已通过', 'success'); loadPending(); }
+      try { await api.reviewQuestion(id, 'approved'); showFlash('已通过', 'success'); loadPending(); updatePendingBadge(); }
       catch (e) { showFlash(e.message, 'error'); }
     }
     async function reject(id) {
-      try { await api.reviewQuestion(id, 'rejected'); showFlash('已驳回', 'success'); loadPending(); }
+      try { await api.reviewQuestion(id, 'rejected'); showFlash('已驳回', 'success'); loadPending(); updatePendingBadge(); }
       catch (e) { showFlash(e.message, 'error'); }
     }
     async function deleteQuestion(id) {
