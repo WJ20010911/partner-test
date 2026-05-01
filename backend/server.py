@@ -1400,7 +1400,7 @@ def handle_admin_delete_user(headers, uid):
         row = conn.execute("SELECT id, role FROM users WHERE id = ?", (uid,)).fetchone()
         if not row:
             return error_response("用户不存在", 404)
-        if row["role"] != "test":
+        if row["role"] not in ("test", "user"):
             return error_response("只能删除测试账号", 403)
         conn.execute("DELETE FROM users WHERE id = ?", (uid,))
         conn.commit()
@@ -1536,7 +1536,7 @@ route("GET", r"/api/admin/test-trend")(lambda h, b, *a: handle_admin_test_trend(
 route("GET", r"/api/admin/question-stats")(lambda h, b, *a: handle_admin_question_stats(h))
 route("GET", r"/api/admin/users")(lambda h, b, *a: handle_admin_users(h))
 route("PATCH", r"/api/admin/users/([a-f0-9]+)/ban")(lambda h, b, uid: handle_admin_ban_user(h, uid, b))
-route("DELETE", r"/api/admin/users/([a-f0-9_]+)")(lambda h, b, uid: handle_admin_delete_user(h, uid))
+route("DELETE", r"/api/admin/users/([a-zA-Z0-9_]+)")(lambda h, b, uid: handle_admin_delete_user(h, uid))
 route("GET", r"/api/admin/tags")(lambda h, b, *a: handle_admin_tags(h))
 route("GET", r"/api/admin/export")(lambda h, b, *a: handle_admin_export(h))
 route("GET", r"/api/admin/logs")(lambda h, b, *a: handle_admin_logs(h))
