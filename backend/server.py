@@ -356,13 +356,69 @@ def validate_text(text):
     return True, None
 
 # ── Database ──────────────────────────────────────────────
+# Supports both SQLite (local dev) and PostgreSQL (Railway).
+# When DATABASE_URL is set, uses PostgreSQL via psycopg2.
+# Otherwise falls back to local SQLite.
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    db_url = os.environ.get("DATABASE_URL", "")
+    if db_url:
+        import psycopg2
+        import psycopg2.extras
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        return _PgConnection(conn)
+    import sqlite3 as _sq
+    conn = _sq.connect(DB_PATH)
+    conn.row_factory = _sq.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
+
+
+class _PgCursor:
+    """Wraps a RealDictCursor to behave like sqlite3 cursor results."""
+    def __init__(self, cur):
+        self._cur = cur
+    def fetchone(self):
+        r = self._cur.fetchone()
+        if r is not None:
+            return dict(r)
+        return None
+    def fetchall(self):
+        return [dict(r) for r in self._cur.fetchall()]
+
+
+class _PgConnection:
+    """Wraps a psycopg2 connection to mimic sqlite3.Connection."""
+    def __init__(self, conn):
+        self._conn = conn
+    def execute(self, sql, params=None):
+        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        pg_sql = sql
+        had_ignore = "OR IGNORE" in pg_sql
+        pg_sql = pg_sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
+        pg_sql = pg_sql.replace("?", "%s")
+        if had_ignore:
+            pg_sql += " ON CONFLICT DO NOTHING"
+        if params:
+            cur.execute(pg_sql, params)
+        else:
+            cur.execute(pg_sql)
+        return _PgCursor(cur)
+    def executescript(self, sql):
+        cur = self._conn.cursor()
+        for stmt in sql.split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                pg_stmt = stmt.replace("?", "%s")
+                cur.execute(pg_stmt)
+        cur.close()
+    def commit(self):
+        pass  # autocommit
+    def close(self):
+        self._conn.close()
+
 
 def init_db():
     conn = get_db()

@@ -1,2 +1,1 @@
-# Zero external dependencies — pure Python stdlib
-# This file exists for Railway to detect Python project.
+psycopg2-binary>=2.9.9
