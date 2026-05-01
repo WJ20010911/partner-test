@@ -253,7 +253,25 @@ BLOCKED_WORDS = [
     "妈宝", "妈宝男",
     "凤凰男", "孔雀女",
     "玻璃心",
-    "巨婴",
+    "巨婴", "巨婴男",
+    # === Threat / intimidation (威胁恐吓) ===
+    "弄死", "打死你", "杀了你", "砍死", "捅死",
+    "一巴掌", "呼死你", "拍死你", "抽死你",
+    "信不信我", "你等着", "你给我等着",
+    "找人弄你", "找人群殴", "找人打你",
+    # === Common profanity variants (常见脏话变体) ===
+    "装逼", "装B", "装b", "装13",
+    "老子", "老娘",
+    "叫爸爸", "叫爷爷",
+    "跪下来", "跪下叫",
+    "孙子", "龟孙",
+    "放狗屁", "扯淡",
+    "有病", "有病吧",
+    "恶心", "恶心人",
+    "要脸吗", "要脸不",
+    "配吗", "你也配",
+    "惯的你", "惯的",
+    "不知好歹", "给脸不要",
 ]
 
 # ── Baidu Cloud content review (text censor) ────────────
@@ -293,6 +311,7 @@ def _baidu_text_censor(text):
     """Call Baidu text censor API. Returns (is_valid, reason)."""
     token = _baidu_get_token()
     if not token:
+        print(f"[BAIDU] 获取 token 失败，跳过 API 检测")
         return None, None
     url = f"https://aip.baidubce.com/rest/2.0/solution/v1/text_censor/v2/user_defined?access_token={token}"
     body = json.dumps({"text": text}, ensure_ascii=False).encode("utf-8")
@@ -302,29 +321,38 @@ def _baidu_text_censor(text):
         with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read().decode("utf-8"))
             ct = result.get("conclusionType", 1)
+            print(f"[BAIDU] 检测文本: {text!r} → conclusionType={ct} ({result.get('conclusion', 'unknown')})")
             if ct == 1:
                 return True, None
             data = result.get("data", [])
             reason = data[0]["msg"] if data else "审核不通过"
             return False, reason
-    except Exception:
+    except Exception as e:
+        print(f"[BAIDU] API 调用异常: {e}")
         return None, None
 
 
 def validate_text(text):
-    """Check text via Baidu API + local blocked words. Returns (is_valid, reason)."""
-    # 1) Baidu API (if configured)
-    if BAIDU_API_KEY and BAIDU_SECRET_KEY:
-        ok, reason = _baidu_text_censor(text)
-        if ok is not None:
-            if ok:
-                return True, None
-            return False, reason
-    # 2) Local blocked words (fallback)
+    """Check text via local blocked words + Baidu API. Returns (is_valid, reason)."""
+    # 1) Local blocked words first (catches profanity Baidu may miss)
     lower = text.lower()
     for word in BLOCKED_WORDS:
         if word.lower() in lower:
+            print(f"[VALIDATE] 本地词库拦截: {text!r} → 命中词: {word}")
             return False, word
+    # 2) Baidu API (if configured) — catches things our list misses
+    if BAIDU_API_KEY and BAIDU_SECRET_KEY:
+        print(f"[VALIDATE] 本地词库通过，调用百度 API 检测: {text!r}")
+        ok, reason = _baidu_text_censor(text)
+        if ok is not None:
+            if ok:
+                print(f"[VALIDATE] 百度 API 通过: {text!r}")
+                return True, None
+            print(f"[VALIDATE] 百度 API 拦截: {text!r} → {reason}")
+            return False, reason
+        print(f"[VALIDATE] 百度 API 不可用，放行: {text!r}")
+    else:
+        print(f"[VALIDATE] 未配置百度 API（BAIDU_API_KEY 为空），仅走本地词库: {text!r}")
     return True, None
 
 # ── Database ──────────────────────────────────────────────
