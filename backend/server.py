@@ -359,14 +359,26 @@ def validate_text(text):
 # Supports both SQLite (local dev) and PostgreSQL (Railway).
 # When DATABASE_URL is set, uses PostgreSQL via psycopg2.
 
+# Lazy-load psycopg2 only when DATABASE_URL is present
+_psycopg2 = None
+
+
+def _get_psycopg2():
+    global _psycopg2
+    if _psycopg2 is None:
+        import psycopg2 as p
+        import psycopg2.extras
+        _psycopg2 = p
+    return _psycopg2
+
+
 def get_db():
     db_url = os.environ.get("DATABASE_URL", "")
     if db_url:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(db_url)
+        pg = _get_psycopg2()
+        conn = pg.connect(db_url)
         conn.autocommit = True
-        return _PgConnection(conn)
+        return _PgConnection(conn, pg)
     import sqlite3 as _sq
     conn = _sq.connect(DB_PATH)
     conn.row_factory = _sq.Row
@@ -390,10 +402,11 @@ class _PgCursor:
 
 class _PgConnection:
     """Wraps a psycopg2 connection to mimic sqlite3.Connection."""
-    def __init__(self, conn):
+    def __init__(self, conn, pg):
         self._conn = conn
+        self._pg = pg
     def execute(self, sql, params=None):
-        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur = self._conn.cursor(cursor_factory=self._pg.extras.RealDictCursor)
         pg_sql = sql
         had_ignore = "OR IGNORE" in pg_sql
         pg_sql = pg_sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
