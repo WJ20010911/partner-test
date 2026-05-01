@@ -52,6 +52,7 @@ const api = {
   adminQuestionStats() { return this.get('/api/admin/question-stats'); },
   adminUsers() { return this.get('/api/admin/users'); },
   adminBanUser(id, banned = 1) { return this.patch(`/api/admin/users/${id}/ban`, { banned }); },
+  adminDeleteUser(id) { return this.request('DELETE', `/api/admin/users/${id}`); },
   adminTags() { return this.get('/api/admin/tags'); },
   adminExport() { return this.get('/api/admin/export'); },
   adminLogs() { return this.get('/api/admin/logs'); },

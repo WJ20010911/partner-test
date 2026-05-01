@@ -660,6 +660,8 @@ def handle_login(body):
         row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         if not row or not verify_password(password, row["password_hash"]):
             return error_response("Invalid credentials", 401)
+        if row.get("banned"):
+            return error_response("此账号已被封禁，无法登录", 403)
         token = make_token(row["id"], row["role"])
         return json_response({"access_token": token, "token_type": "bearer", "username": row["username"] or ""})
     finally:
@@ -689,7 +691,7 @@ def handle_test_login(headers, body):
     try:
         conn.execute(
             "INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-            (uid, f"test_{uuid.uuid4().hex[:6]}@local.dev", "", "user",
+            (uid, f"test_{uuid.uuid4().hex[:6]}@local.dev", "", "test",
              datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
@@ -1389,6 +1391,24 @@ def handle_admin_ban_user(headers, uid, body):
     finally:
         conn.close()
 
+def handle_admin_delete_user(headers, uid):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT id, role FROM users WHERE id = ?", (uid,)).fetchone()
+        if not row:
+            return error_response("用户不存在", 404)
+        if row["role"] != "test":
+            return error_response("只能删除测试账号", 403)
+        conn.execute("DELETE FROM users WHERE id = ?", (uid,))
+        conn.commit()
+        log_admin_action(headers, "delete_user", uid)
+        return json_response({"detail": "已删除"})
+    finally:
+        conn.close()
+
 def handle_admin_tags(headers):
     user, err = require_admin(headers)
     if err:
@@ -1516,6 +1536,7 @@ route("GET", r"/api/admin/test-trend")(lambda h, b, *a: handle_admin_test_trend(
 route("GET", r"/api/admin/question-stats")(lambda h, b, *a: handle_admin_question_stats(h))
 route("GET", r"/api/admin/users")(lambda h, b, *a: handle_admin_users(h))
 route("PATCH", r"/api/admin/users/([a-f0-9]+)/ban")(lambda h, b, uid: handle_admin_ban_user(h, uid, b))
+route("DELETE", r"/api/admin/users/([a-f0-9_]+)")(lambda h, b, uid: handle_admin_delete_user(h, uid))
 route("GET", r"/api/admin/tags")(lambda h, b, *a: handle_admin_tags(h))
 route("GET", r"/api/admin/export")(lambda h, b, *a: handle_admin_export(h))
 route("GET", r"/api/admin/logs")(lambda h, b, *a: handle_admin_logs(h))

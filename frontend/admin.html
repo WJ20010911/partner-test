@@ -495,10 +495,14 @@
           html += '<div class="user-info"><span class="email">' + escapeHtml(u.username || u.email) + '</span>';
           html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + (u.created_at || '').slice(0,10) + '</span></div>';
           html += '<div>';
-          if (!u.banned) {
-            html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="banUser(\'' + u.id + '\')">封禁</button>';
-          } else {
-            html += '<button class="btn btn-sm btn-secondary" onclick="unbanUser(\'' + u.id + '\')">解封</button>';
+          if (u.role === 'test') {
+            html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteUser(\'' + u.id + '\')">删除</button>';
+          } else if (u.role === 'contributor') {
+            if (!u.banned) {
+              html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="banUser(\'' + u.id + '\')">封禁</button>';
+            } else {
+              html += '<button class="btn btn-sm btn-secondary" onclick="unbanUser(\'' + u.id + '\')">解封</button>';
+            }
           }
           html += '</div></div>';
         }
@@ -515,6 +519,11 @@
     }
     async function unbanUser(id) {
       try { await api.adminBanUser(id, 0); showFlash('已解封', 'success'); loadUsers(); }
+      catch (e) { showFlash(e.message, 'error'); }
+    }
+    async function deleteUser(id) {
+      if (!confirm('确定要删除此测试账号吗？')) return;
+      try { await api.adminDeleteUser(id); showFlash('已删除', 'success'); loadUsers(); }
       catch (e) { showFlash(e.message, 'error'); }
     }
 
