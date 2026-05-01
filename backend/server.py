@@ -1203,7 +1203,7 @@ def handle_set_tester_nickname(body):
         try:
             now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
             conn.execute(
-                "INSERT OR REPLACE INTO tester_nicknames (token, nickname, created_at) VALUES (?, ?, ?)",
+                "INSERT INTO tester_nicknames (token, nickname, created_at) VALUES (?, ?, ?) ON CONFLICT (token) DO UPDATE SET nickname=EXCLUDED.nickname, created_at=EXCLUDED.created_at",
                 (token, nickname, now)
             )
             conn.commit()
@@ -1538,7 +1538,7 @@ def handle_admin_change_pwd(headers, body):
     try:
         conn.execute("CREATE TABLE IF NOT EXISTS admin_config (key TEXT PRIMARY KEY, value TEXT)")
         h = hash_password(new_pw)
-        conn.execute("INSERT OR REPLACE INTO admin_config (key, value) VALUES ('password_hash', ?)", (h,))
+        conn.execute("INSERT INTO admin_config (key, value) VALUES ('password_hash', ?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value", (h,))
         conn.commit()
         log_admin_action(headers, "change_password")
         return json_response({"status": "ok"})
@@ -1986,7 +1986,7 @@ def main():
                 qid = uuid.uuid4().hex[:8]
                 conn.execute(
                     "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)",
-                    (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), q.get("time_limit", 0), now)
+                    (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), 0, now)
                 )
                 for tag_name in q.get("tags", []):
                     tag_name = tag_name.strip()
