@@ -38,6 +38,7 @@
         <ul class="options-list" id="options-list"></ul>
         <div style="display:flex;gap:8px;margin-top:16px;">
           <button class="btn btn-sm btn-outline" id="skip-btn" onclick="skipQuestion(false)" style="flex:1;font-size:0.85em;">跳过</button>
+          <button class="btn btn-sm btn-outline" id="extend-btn" onclick="extendTime()" style="flex:1;font-size:0.85em;border-color:#ffa726;color:#ffa726;" disabled>加时<span id="extend-count">0/3</span></button>
           <button class="btn btn-sm btn-outline" id="complain-btn" onclick="skipQuestion(true)" style="flex:1;font-size:0.85em;border-color:#e88d9e;color:#e88d9e;">投诉并跳过</button>
         </div>
       </div>
@@ -61,6 +62,10 @@
     let seenIds = [];
     let isSkipping = false;
     let timerInterval = null;
+    let extendCount = 0;
+    const MAX_EXTENDS = 3;
+    let timerRemaining = 0;
+    let timerLimit = 0;
 
     async function startTest() {
       document.getElementById('start-screen').classList.add('hidden');
@@ -124,22 +129,40 @@
       document.getElementById('next-btn').disabled = true;
 
       // Start countdown timer if time_limit > 0
+      extendCount = 0;
       const limit = q.time_limit || 0;
       if (limit > 0) {
-        let remaining = limit;
+        timerRemaining = limit;
+        timerLimit = limit;
         const wrapper = document.getElementById('timer-bar-wrapper');
         const bar = document.getElementById('timer-bar');
         wrapper.style.display = 'block';
         bar.style.width = '100%';
         bar.style.transition = 'none';
+        // Reset extend button
+        var extBtn = document.getElementById('extend-btn');
+        extBtn.disabled = true;
+        extBtn.style.opacity = '0.5';
+        document.getElementById('extend-count').textContent = '0/3';
         // Force reflow to reset animation
         bar.offsetHeight;
         bar.style.transition = 'width 1s linear';
         timerInterval = setInterval(function() {
-          remaining--;
-          const pct = (remaining / limit) * 100;
+          timerRemaining--;
+          var eBtn = document.getElementById('extend-btn');
+          var eCnt = document.getElementById('extend-count');
+          // Enable button when <= 5s and not maxed out
+          if (timerRemaining <= 5 && extendCount < MAX_EXTENDS) {
+            eBtn.disabled = false;
+            eBtn.style.opacity = '1';
+          } else {
+            eBtn.disabled = true;
+            eBtn.style.opacity = '0.5';
+          }
+          eCnt.textContent = extendCount + '/3';
+          const pct = (timerRemaining / timerLimit) * 100;
           bar.style.width = Math.max(0, pct) + '%';
-          if (remaining <= 0) {
+          if (timerRemaining <= 0) {
             clearInterval(timerInterval);
             timerInterval = null;
             handleTimeout();
@@ -154,6 +177,16 @@
         btn.classList.toggle('selected', i === idx);
       });
       document.getElementById('next-btn').disabled = false;
+    }
+
+    function extendTime() {
+      if (extendCount >= MAX_EXTENDS || timerRemaining <= 0) return;
+      extendCount++;
+      timerRemaining += 5;
+      var eBtn = document.getElementById('extend-btn');
+      eBtn.disabled = true;
+      eBtn.style.opacity = '0.5';
+      document.getElementById('extend-count').textContent = extendCount + '/3';
     }
 
     async function skipQuestion(isComplaint) {
