@@ -59,6 +59,7 @@ const api = {
   adminChangePassword(oldPw, newPw) { return this.post('/api/admin/change-password', { old_password: oldPw, new_password: newPw }); },
   adminConfig() { return this.get('/api/admin/config'); },
   checkQuestionCounts() { return this.get('/api/admin/question-counts'); },
+  questionBankHistory() { return this.get('/api/admin/question-bank-history'); },
   batchInsertTestQuestions() { return this.post('/api/admin/batch-insert-test', {}); },
   updateQuestion(id, data) { return this.patch(`/api/questions/${id}/edit`, data); },
 

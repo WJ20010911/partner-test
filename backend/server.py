@@ -506,6 +506,15 @@ def init_db():
             nickname TEXT NOT NULL,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS question_bank_log (
+            id TEXT PRIMARY KEY,
+            action TEXT NOT NULL,
+            total INTEGER NOT NULL DEFAULT 0,
+            approved INTEGER NOT NULL DEFAULT 0,
+            pending INTEGER NOT NULL DEFAULT 0,
+            rejected INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        );
     """)
     # Add banned column to users if not exists
     try:
@@ -524,6 +533,21 @@ def init_db():
     )
     conn.commit()
     conn.close()
+
+
+def _log_question_bank(conn, action):
+    """Record current question bank stats after each add/delete/review."""
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    total = conn.execute("SELECT COUNT(*) as c FROM questions").fetchone()["c"]
+    approved = conn.execute("SELECT COUNT(*) as c FROM questions WHERE status='approved'").fetchone()["c"]
+    pending = conn.execute("SELECT COUNT(*) as c FROM questions WHERE status='pending'").fetchone()["c"]
+    rejected = conn.execute("SELECT COUNT(*) as c FROM questions WHERE status='rejected'").fetchone()["c"]
+    lid = uuid.uuid4().hex[:8]
+    conn.execute(
+        "INSERT INTO question_bank_log (id, action, total, approved, pending, rejected, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (lid, action, total, approved, pending, rejected, now)
+    )
+
 
 # ── Auth helpers ──────────────────────────────────────────
 
@@ -778,6 +802,7 @@ def handle_create_question(headers, body):
                 conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
             conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
         conn.commit()
+        _log_question_bank(conn, "create")
         return json_response({"id": qid, "status": "pending"}, 201)
     finally:
         conn.close()
@@ -825,6 +850,7 @@ def handle_review_question(headers, qid, body):
             return error_response("Question not found", 404)
         conn.execute("UPDATE questions SET status = ? WHERE id = ?", (status, qid))
         conn.commit()
+        _log_question_bank(conn, "review")
         return json_response({"id": qid, "status": status})
     finally:
         conn.close()
@@ -984,10 +1010,10 @@ def handle_get_complaints(headers):
     try:
         # Get all unique question_ids that have complaints, with counts
         rows = conn.execute(
-            "SELECT question_id, COUNT(*) as cnt, q.content as q_content "
+            "SELECT qs.question_id, COUNT(*) as cnt, q.content as q_content "
             "FROM question_skips qs JOIN questions q ON qs.question_id = q.id "
             "WHERE qs.reason = 'complaint' "
-            "GROUP BY question_id "
+            "GROUP BY qs.question_id, q.content "
             "ORDER BY cnt DESC"
         ).fetchall()
 
@@ -1038,10 +1064,12 @@ def handle_delete_question(headers, qid):
         conn.execute("DELETE FROM question_skips WHERE question_id = ?", (qid,))
         conn.execute("DELETE FROM questions WHERE id = ?", (qid,))
         conn.commit()
+        _log_question_bank(conn, "delete")
         log_admin_action(headers, "delete_question", qid)
         return json_response({"id": qid, "status": "deleted"})
     finally:
         conn.close()
+
 
 # ── Admin delete with password ──────────────────────
 
@@ -1064,6 +1092,7 @@ def handle_admin_delete_question(headers, body):
         conn.execute("DELETE FROM question_skips WHERE question_id = ?", (qid,))
         conn.execute("DELETE FROM questions WHERE id = ?", (qid,))
         conn.commit()
+        _log_question_bank(conn, "delete")
         log_admin_action(headers, "delete_question", qid)
         return json_response({"id": qid, "status": "deleted"})
     finally:
@@ -1091,6 +1120,7 @@ def handle_admin_batch_delete(headers, body):
             conn.execute("DELETE FROM questions WHERE id = ?", (qid,))
             deleted += 1
         conn.commit()
+        _log_question_bank(conn, "batch_delete")
         log_admin_action(headers, "batch_delete_questions", f"Deleted {deleted} questions")
         return json_response({"deleted": deleted})
     finally:
@@ -1543,6 +1573,7 @@ route("GET", r"/api/admin/logs")(lambda h, b, *a: handle_admin_logs(h))
 route("POST", r"/api/admin/change-password")(lambda h, b, *a: handle_admin_change_pwd(h, b))
 route("GET", r"/api/admin/config")(lambda h, b, *a: handle_admin_get_config(h))
 route("GET", r"/api/admin/question-counts")(lambda h, b, *a: handle_question_counts(h))
+route("GET", r"/api/admin/question-bank-history")(lambda h, b, *a: handle_question_bank_history(h))
 route("POST", r"/api/admin/batch-insert-test")(lambda h, b, *a: handle_batch_insert_test_questions(h, b))
 route("GET", r"/api/contributors")(lambda h, b, *a: handle_contributors(h))
 route("GET", r"/api/public-stats")(lambda h, b, *a: handle_public_stats(h, b))
@@ -1713,6 +1744,21 @@ TEST_QUESTIONS_POOL = [
     },
 ]
 
+def handle_question_bank_history(headers):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT action, total, approved, pending, rejected, created_at "
+            "FROM question_bank_log ORDER BY created_at DESC LIMIT 100"
+        ).fetchall()
+        return json_response([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
 def handle_question_counts(headers):
     conn = get_db()
     try:
@@ -1770,6 +1816,7 @@ def handle_batch_insert_test_questions(headers, body):
                 conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
             inserted += 1
         conn.commit()
+        _log_question_bank(conn, "batch_insert")
         return json_response({"inserted": inserted, "message": f"成功添加 {inserted} 道测试题目"})
     finally:
         conn.close()
