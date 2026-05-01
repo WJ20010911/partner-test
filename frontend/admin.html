@@ -259,6 +259,8 @@
     // ─── All Questions ───
     var allQuestions = [];
     var dimFilter = '';
+    var searchQuery = '';
+    var tagFilter = '';
 
     async function loadAll() {
       var container = document.getElementById('admin-content');
@@ -279,9 +281,33 @@
       renderAllTable();
     }
 
+    function filterByTag(tag) {
+      tagFilter = (tagFilter === tag) ? '' : tag;
+      searchQuery = '';
+      dimFilter = '';
+      switchTab('all');
+    }
+
+    function onSearchInput(val) {
+      searchQuery = val.toLowerCase();
+      renderAllTable();
+    }
+
     function renderAllTable() {
       var container = document.getElementById('admin-content');
-      var filtered = dimFilter ? allQuestions.filter(function(q) { return (q.dimension || '') === dimFilter; }) : allQuestions;
+      var filtered = allQuestions.filter(function(q) {
+        // Dimension filter
+        if (dimFilter && (q.dimension || '') !== dimFilter) return false;
+        // Tag filter
+        if (tagFilter && (!q.tags || q.tags.indexOf(tagFilter) === -1)) return false;
+        // Text search
+        if (searchQuery) {
+          var qText = (q.content || '').toLowerCase();
+          var optsText = (q.options || []).map(function(o) { return o.text || ''; }).join(' ').toLowerCase();
+          if (qText.indexOf(searchQuery) === -1 && optsText.indexOf(searchQuery) === -1) return false;
+        }
+        return true;
+      });
 
       // Collect unique dimensions
       var dims = {};
@@ -289,6 +315,16 @@
       var dimNames = Object.keys(dims).sort();
 
       var html = '<div class="section-title">全部题库 (' + filtered.length + ' / ' + allQuestions.length + ' 题)</div>';
+
+      // Search bar
+      html += '<div style="margin-bottom:10px;">';
+      html += '<input type="text" id="q-search" placeholder="搜索题干或选项..." value="' + escapeHtml(searchQuery) + '" oninput="onSearchInput(this.value)" style="width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">';
+      html += '</div>';
+
+      // Tag filter indicator
+      if (tagFilter) {
+        html += '<div style="margin-bottom:8px;font-size:13px;color:var(--primary-dark);">标签筛选: <span class="tag-chip" style="background:var(--primary-dark);color:#fff;">' + escapeHtml(tagFilter) + '</span> <span class="tag-chip" onclick="filterByTag(\'\')" style="cursor:pointer;border:1px dashed #999;color:#999;">✕ 清除</span></div>';
+      }
 
       // Dimension filter chips
       html += '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;">';
@@ -537,13 +573,20 @@
     }
 
     // ─── Users ───
+    var userSearchQuery = '';
+
     async function loadUsers() {
       var container = document.getElementById('admin-content');
       try {
         var users = await api.adminUsers();
-        var html = '<div class="section-title">用户管理 (' + users.length + ' 人)</div>';
-        for (var i = 0; i < users.length; i++) {
-          var u = users[i];
+        var filtered = userSearchQuery ? users.filter(function(u) {
+          var name = (u.username || u.email || '').toLowerCase();
+          return name.indexOf(userSearchQuery) !== -1;
+        }) : users;
+        var html = '<div class="section-title">用户管理 (' + filtered.length + ' / ' + users.length + ' 人)</div>';
+        html += '<div style="margin-bottom:10px;"><input type="text" id="user-search" placeholder="搜索用户名或邮箱..." value="' + escapeHtml(userSearchQuery) + '" oninput="userSearchQuery=this.value.toLowerCase();loadUsers()" style="width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;"></div>';
+        for (var i = 0; i < filtered.length; i++) {
+          var u = filtered[i];
           html += '<div class="user-row">';
           html += '<div class="user-info"><span class="email">' + escapeHtml(u.username || u.email) + '</span>';
           html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + (u.created_at || '').slice(0,10) + '</span></div>';
@@ -585,9 +628,10 @@
       var container = document.getElementById('admin-content');
       try {
         var tags = await api.adminTags();
-        var html = '<div class="section-title">题目标签 (' + tags.length + ')</div><div>';
+        var html = '<div class="section-title">题目标签 (' + tags.length + ')</div>';
+        html += '<p style="font-size:13px;color:var(--text-light);margin-bottom:12px;">点击标签查看对应的题目</p><div>';
         for (var i = 0; i < tags.length; i++) {
-          html += '<span class="tag-chip">' + escapeHtml(tags[i].name) + ' (' + tags[i].question_count + '题)</span>';
+          html += '<span class="tag-chip" onclick="filterByTag(\'' + escapeHtml(tags[i].name) + '\')" style="cursor:pointer;">' + escapeHtml(tags[i].name) + ' (' + tags[i].question_count + '题)</span>';
         }
         html += '</div>';
         container.innerHTML = html;
