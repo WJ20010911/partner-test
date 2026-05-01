@@ -1321,11 +1321,19 @@ def record_admin_attempt(ip):
     _admin_login_attempts.setdefault(ip, []).append(datetime.now(timezone.utc).timestamp())
 
 def verify_admin_password(password):
+    # 1. Check DB-stored hash first (set via change-password API)
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM admin_config WHERE key='password_hash'").fetchone()
+        if row:
+            return verify_password(password, row["value"])
+        conn.close()
+    except Exception:
+        pass
+    # 2. Fallback: env var or default 123123
     if not ADMIN_PASSWORD_HASH:
-        # Fallback: compare via hash_password
         h = hashlib.pbkdf2_hmac("sha256", password.encode(), b"admin_salt", 100000)
         expected = base64.b64encode(h).decode()
-        # First-time init: store the hash
         return expected == base64.b64encode(hashlib.pbkdf2_hmac("sha256", b"123123", b"admin_salt", 100000)).decode()
     return verify_password(password, ADMIN_PASSWORD_HASH)
 
