@@ -1833,6 +1833,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
 def main():
     init_db()
+    db_mode = "PostgreSQL" if os.environ.get("DATABASE_URL", "") else "SQLite"
+    print(f"数据库: {db_mode}  (表已就绪)")
     # Auto-seed if questions table is empty
     conn = get_db()
     count = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
