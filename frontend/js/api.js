@@ -75,6 +75,7 @@ const api = {
   // Admin delete with password
   adminDeleteQuestion(id, password) { return this.post('/api/admin/questions/delete', { id, password }); },
   adminBatchDelete(ids, password) { return this.post('/api/admin/questions/batch-delete', { ids, password }); },
+  adminBatchSetTimeLimit(ids, timeLimit, password) { return this.post('/api/admin/questions/batch-set-timelimit', { ids, time_limit: timeLimit, password }); },
 
   // Test
   submitTest(answers) { return this.post('/api/test/submit', { answers }); },

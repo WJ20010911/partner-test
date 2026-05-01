@@ -257,46 +257,80 @@
     }
 
     // ─── All Questions ───
+    var allQuestions = [];
+    var dimFilter = '';
+
     async function loadAll() {
       var container = document.getElementById('admin-content');
       try {
-        var questions = await api.getAllQuestions();
-        if (!questions.length) {
+        allQuestions = await api.getAllQuestions();
+        if (!allQuestions.length) {
           container.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无题目</p>';
           return;
         }
-        var html = '<div class="section-title">全部题库 (' + questions.length + ' 题)</div>';
-        html += '<div id="batch-bar" style="margin-bottom:8px;display:flex;gap:8px;align-items:center;"></div>';
-        html += '<table class="admin-table"><thead><tr><th style="width:32px;"><input type="checkbox" id="select-all" onchange="toggleSelectAll()"></th><th>状态</th><th>题目</th><th>选项</th><th>标签</th><th>提交者</th><th>操作</th></tr></thead><tbody>';
-        for (var i = 0; i < questions.length; i++) {
-          var q = questions[i];
-          var statusLabel = q.status === 'approved' ? '<span style="color:#2e7d32;">已通过</span>' : q.status === 'pending' ? '<span style="color:#e65100;">待审核</span>' : '<span style="color:#c62828;">已驳回</span>';
-          html += '<tr id="qrow-' + q.id + '">';
-          html += '<td><input type="checkbox" class="q-checkbox" value="' + q.id + '" onchange="updateBatchBar()"></td>';
-          html += '<td style="font-size:12px;white-space:nowrap;">' + statusLabel + '</td>';
-          html += '<td style="max-width:200px;word-break:break-all;font-size:13px;">' + escapeHtml(q.content) + '</td>';
-          html += '<td style="font-size:12px;">';
-          for (var j = 0; j < q.options.length; j++) {
-            html += '[' + q.options[j].score + '分] ' + escapeHtml(q.options[j].text) + '<br>';
-          }
-          html += '</td>';
-          html += '<td style="font-size:12px;">' + (q.tags || []).map(function(t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join(' ') + '</td>';
-          html += '<td style="font-size:12px;color:var(--text-light);">' + escapeHtml(q.submitter || '-') + '</td>';
-          html += '<td style="white-space:nowrap;">';
-          html += '<button class="btn btn-sm btn-outline" onclick="openEditModal(\'' + q.id + '\')" style="margin-right:4px;">编辑</button>';
-          if (q.status === 'pending') {
-            html += '<button class="btn btn-sm btn-secondary" onclick="approve(\'' + q.id + '\')" style="margin-right:4px;">通过</button>';
-            html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="reject(\'' + q.id + '\')" style="margin-right:4px;">驳回</button>';
-          }
-          html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteQuestion(\'' + q.id + '\')">删除</button>';
-          html += '</td></tr>';
-        }
-        html += '</tbody></table>';
-        container.innerHTML = html;
-        updateBatchBar();
+        renderAllTable();
       } catch (e) {
         container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
       }
+    }
+
+    function setDimFilter(dim) {
+      dimFilter = (dimFilter === dim) ? '' : dim;
+      renderAllTable();
+    }
+
+    function renderAllTable() {
+      var container = document.getElementById('admin-content');
+      var filtered = dimFilter ? allQuestions.filter(function(q) { return (q.dimension || '') === dimFilter; }) : allQuestions;
+
+      // Collect unique dimensions
+      var dims = {};
+      allQuestions.forEach(function(q) { var d = q.dimension || '未分类'; dims[d] = (dims[d] || 0) + 1; });
+      var dimNames = Object.keys(dims).sort();
+
+      var html = '<div class="section-title">全部题库 (' + filtered.length + ' / ' + allQuestions.length + ' 题)</div>';
+
+      // Dimension filter chips
+      html += '<div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;">';
+      dimNames.forEach(function(d) {
+        var active = (dimFilter === d) ? ' style="background:var(--primary-dark);color:#fff;border-color:var(--primary-dark);"' : '';
+        html += '<span class="tag-chip" onclick="setDimFilter(\'' + escapeHtml(d) + '\')"' + active + '>' + escapeHtml(d) + ' (' + dims[d] + '题)</span>';
+      });
+      if (dimFilter) {
+        html += '<span class="tag-chip" onclick="setDimFilter(\'\')" style="cursor:pointer;border:1px dashed #999;color:#999;">✕ 清除筛选</span>';
+      }
+      html += '</div>';
+
+      html += '<div id="batch-bar" style="margin-bottom:8px;display:flex;gap:8px;align-items:center;"></div>';
+      html += '<table class="admin-table"><thead><tr><th style="width:32px;"><input type="checkbox" id="select-all" onchange="toggleSelectAll()"></th><th>状态</th><th>维度</th><th>限时</th><th>题目</th><th>选项</th><th>标签</th><th>提交者</th><th>操作</th></tr></thead><tbody>';
+      for (var i = 0; i < filtered.length; i++) {
+        var q = filtered[i];
+        var statusLabel = q.status === 'approved' ? '<span style="color:#2e7d32;">已通过</span>' : q.status === 'pending' ? '<span style="color:#e65100;">待审核</span>' : '<span style="color:#c62828;">已驳回</span>';
+        html += '<tr id="qrow-' + q.id + '">';
+        html += '<td><input type="checkbox" class="q-checkbox" value="' + q.id + '" onchange="updateBatchBar()"></td>';
+        html += '<td style="font-size:12px;white-space:nowrap;">' + statusLabel + '</td>';
+        html += '<td style="font-size:12px;color:var(--text-light);">' + escapeHtml(q.dimension || '-') + '</td>';
+        html += '<td style="font-size:12px;color:var(--text-light);">' + (q.time_limit ? q.time_limit + 's' : '-') + '</td>';
+        html += '<td style="max-width:180px;word-break:break-all;font-size:13px;">' + escapeHtml(q.content) + '</td>';
+        html += '<td style="font-size:12px;">';
+        for (var j = 0; j < q.options.length; j++) {
+          html += '[' + q.options[j].score + '分] ' + escapeHtml(q.options[j].text) + '<br>';
+        }
+        html += '</td>';
+        html += '<td style="font-size:12px;">' + (q.tags || []).map(function(t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join(' ') + '</td>';
+        html += '<td style="font-size:12px;color:var(--text-light);">' + escapeHtml(q.submitter || '-') + '</td>';
+        html += '<td style="white-space:nowrap;">';
+        html += '<button class="btn btn-sm btn-outline" onclick="openEditModal(\'' + q.id + '\')" style="margin-right:4px;">编辑</button>';
+        if (q.status === 'pending') {
+          html += '<button class="btn btn-sm btn-secondary" onclick="approve(\'' + q.id + '\')" style="margin-right:4px;">通过</button>';
+          html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="reject(\'' + q.id + '\')" style="margin-right:4px;">驳回</button>';
+        }
+        html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteQuestion(\'' + q.id + '\')">删除</button>';
+        html += '</td></tr>';
+      }
+      html += '</tbody></table>';
+      container.innerHTML = html;
+      updateBatchBar();
     }
 
     function toggleSelectAll() {
@@ -313,7 +347,8 @@
         bar.innerHTML = '';
       } else {
         bar.innerHTML = '<span style="font-size:13px;color:var(--text-light);">已选 ' + selected.length + ' 题</span>' +
-          '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="batchDelete()">批量删除</button>';
+          '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="batchDelete()">批量删除</button>' +
+          '<button class="btn btn-sm btn-outline" style="border-color:#ffa726;color:#ffa726;" onclick="batchSetTimelimit()">批量设置限时</button>';
       }
     }
 
@@ -329,6 +364,24 @@
         loadAll();
       } catch (e) {
         showFlash('删除失败: ' + e.message, 'error');
+      }
+    }
+
+    async function batchSetTimelimit() {
+      var selected = Array.from(document.querySelectorAll('.q-checkbox:checked')).map(function(cb) { return cb.value; });
+      if (selected.length === 0) return;
+      var seconds = prompt('为选中的 ' + selected.length + ' 道题设置限时（秒），输入 0 表示不限时：', '15');
+      if (seconds === null) return;
+      var tl = parseInt(seconds);
+      if (isNaN(tl) || tl < 0) { showFlash('请输入有效数字', 'error'); return; }
+      var pw = prompt('请输入管理员密码确认批量设置限时：');
+      if (!pw) return;
+      try {
+        await api.adminBatchSetTimeLimit(selected, tl, pw);
+        showFlash('已为 ' + selected.length + ' 道题设置限时 ' + tl + ' 秒', 'success');
+        loadAll();
+      } catch (e) {
+        showFlash('设置失败: ' + e.message, 'error');
       }
     }
 

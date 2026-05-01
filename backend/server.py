@@ -1126,6 +1126,37 @@ def handle_admin_batch_delete(headers, body):
     finally:
         conn.close()
 
+# ── Batch set time_limit ──────────────────────────────
+
+def handle_admin_batch_set_timelimit(headers, body):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    password = body.get("password", "")
+    if not verify_admin_password(password):
+        return error_response("管理员密码错误", 401)
+    ids = body.get("ids", [])
+    time_limit = body.get("time_limit", 0)
+    if not ids:
+        return error_response("No IDs provided", 400)
+    if not isinstance(time_limit, int) or time_limit < 0:
+        return error_response("Invalid time_limit", 400)
+    conn = get_db()
+    try:
+        updated = 0
+        for qid in ids:
+            row = conn.execute("SELECT id FROM questions WHERE id = ?", (qid,)).fetchone()
+            if not row:
+                continue
+            conn.execute("UPDATE questions SET time_limit = ? WHERE id = ?", (time_limit, qid))
+            updated += 1
+        conn.commit()
+        _log_question_bank(conn, "batch_set_timelimit")
+        log_admin_action(headers, "batch_set_timelimit", f"Set time_limit={time_limit} for {updated} questions")
+        return json_response({"updated": updated})
+    finally:
+        conn.close()
+
 # ── Contributors ─────────────────────────────────────
 
 def handle_contributors(headers):
@@ -1582,6 +1613,7 @@ route("PATCH", r"/api/questions/([a-f0-9]+)/edit")(lambda h, b, qid: handle_edit
 route("GET", r"/api/questions/all")(lambda h, b, *a: handle_all_questions(h))
 route("POST", r"/api/admin/questions/delete")(lambda h, b, *a: handle_admin_delete_question(h, b))
 route("POST", r"/api/admin/questions/batch-delete")(lambda h, b, *a: handle_admin_batch_delete(h, b))
+route("POST", r"/api/admin/questions/batch-set-timelimit")(lambda h, b, *a: handle_admin_batch_set_timelimit(h, b))
 
 # ── Test question pool for quick-fill ────────────────────
 
