@@ -1284,7 +1284,7 @@ def handle_admin_users(headers):
         return err
     conn = get_db()
     try:
-        rows = conn.execute("SELECT id, email, role, created_at, banned FROM users ORDER BY created_at DESC").fetchall()
+        rows = conn.execute("SELECT id, email, username, role, created_at, banned FROM users ORDER BY created_at DESC").fetchall()
         return json_response([dict(r) for r in rows])
     finally:
         conn.close()

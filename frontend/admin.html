@@ -492,7 +492,7 @@
         for (var i = 0; i < users.length; i++) {
           var u = users[i];
           html += '<div class="user-row">';
-          html += '<div class="user-info"><span class="email">' + escapeHtml(u.email) + '</span>';
+          html += '<div class="user-info"><span class="email">' + escapeHtml(u.username || u.email) + '</span>';
           html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + (u.created_at || '').slice(0,10) + '</span></div>';
           html += '<div>';
           if (!u.banned) {
