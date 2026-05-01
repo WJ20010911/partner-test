@@ -387,17 +387,35 @@ def get_db():
     return conn
 
 
+class _PgRow:
+    """Behaves like sqlite3.Row: supports both row[0] and row['name']."""
+    def __init__(self, keys, values):
+        self._keys = keys
+        self._values = values
+        self._key_map = {k: i for i, k in enumerate(keys)}
+    def __getitem__(self, key):
+        if isinstance(key, (int, slice)):
+            return self._values[key]
+        return self._values[self._key_map[key]]
+    def __len__(self):
+        return len(self._values)
+    def keys(self):
+        return self._keys
+
+
 class _PgCursor:
     """Wraps a RealDictCursor to behave like sqlite3 cursor results."""
     def __init__(self, cur):
         self._cur = cur
+        self._keys = [d.name for d in cur.description] if cur.description else []
     def fetchone(self):
         r = self._cur.fetchone()
         if r is not None:
-            return dict(r)
+            return _PgRow(self._keys, [r[k] for k in self._keys])
         return None
     def fetchall(self):
-        return [dict(r) for r in self._cur.fetchall()]
+        rows = self._cur.fetchall()
+        return [_PgRow(self._keys, [r[k] for k in self._keys]) for r in rows]
 
 
 class _PgConnection:
