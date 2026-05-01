@@ -1835,17 +1835,35 @@ def main():
     init_db()
     db_mode = "PostgreSQL" if os.environ.get("DATABASE_URL", "") else "SQLite"
     print(f"数据库: {db_mode}  (表已就绪)")
-    # Auto-seed if questions table is empty
+    # Auto-seed if questions table is empty (uses server.py's get_db, which handles PostgreSQL)
     conn = get_db()
     count = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
-    conn.close()
     if count == 0:
         print("Questions table empty, auto-seeding...")
         try:
-            from seed_questions import QUESTIONS_JSON, rebuild
-            rebuild()
+            from seed_questions import QUESTIONS_JSON
+            questions = json.loads(QUESTIONS_JSON)
+            now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            for q in questions:
+                qid = uuid.uuid4().hex[:8]
+                conn.execute(
+                    "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)",
+                    (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), q.get("time_limit", 0), now)
+                )
+                for tag_name in q.get("tags", []):
+                    tag_name = tag_name.strip()
+                    if not tag_name:
+                        continue
+                    existing = conn.execute("SELECT id FROM tags WHERE name = ?", (tag_name,)).fetchone()
+                    tid = existing["id"] if existing else uuid.uuid4().hex[:8]
+                    if not existing:
+                        conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
+                    conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
+            conn.commit()
+            print(f"Seeded {len(questions)} questions.")
         except ImportError:
             print("Warning: seed_questions.py not found, skipping seed.")
+    conn.close()
 
     host = os.environ.get("HOST", "0.0.0.0")
     server = http.server.ThreadingHTTPServer((host, PORT), RequestHandler)
