@@ -1,1 +1,1 @@
-# SQLite-only — no external dependencies needed
+psycopg2-binary>=2.9.9
