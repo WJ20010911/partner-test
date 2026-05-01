@@ -18,7 +18,8 @@ import urllib.request
 import urllib.error
 
 PORT = int(os.environ.get("PORT", "8000"))
-DB_PATH = os.path.join(os.path.dirname(__file__), "partner_test.db")
+# Railway Volume 挂载路径 vs 本地开发路径
+DB_PATH = "/app/data/partner_test.db" if os.environ.get("RAILWAY_SERVICE_ID") else os.path.join(os.path.dirname(__file__), "partner_test.db")
 SECRET_KEY = os.environ.get("SECRET_KEY", "partner-test-secret-change-in-prod")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "123123")
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
@@ -356,68 +357,14 @@ def validate_text(text):
     return True, None
 
 # ── Database ──────────────────────────────────────────────
-# Supports both SQLite (local dev) and PostgreSQL (Railway).
-# When DATABASE_URL is set, uses PostgreSQL via psycopg2.
-# Otherwise falls back to local SQLite.
 
 def get_db():
-    db_url = os.environ.get("DATABASE_URL", "")
-    if db_url:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(db_url)
-        conn.autocommit = True
-        return _PgConnection(conn)
     import sqlite3 as _sq
     conn = _sq.connect(DB_PATH)
     conn.row_factory = _sq.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
-
-
-class _PgCursor:
-    """Wraps a RealDictCursor to behave like sqlite3 cursor results."""
-    def __init__(self, cur):
-        self._cur = cur
-    def fetchone(self):
-        r = self._cur.fetchone()
-        if r is not None:
-            return dict(r)
-        return None
-    def fetchall(self):
-        return [dict(r) for r in self._cur.fetchall()]
-
-
-class _PgConnection:
-    """Wraps a psycopg2 connection to mimic sqlite3.Connection."""
-    def __init__(self, conn):
-        self._conn = conn
-    def execute(self, sql, params=None):
-        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        pg_sql = sql
-        had_ignore = "OR IGNORE" in pg_sql
-        pg_sql = pg_sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
-        pg_sql = pg_sql.replace("?", "%s")
-        if had_ignore:
-            pg_sql += " ON CONFLICT DO NOTHING"
-        if params:
-            cur.execute(pg_sql, params)
-        else:
-            cur.execute(pg_sql)
-        return _PgCursor(cur)
-    def executescript(self, sql):
-        cur = self._conn.cursor()
-        for stmt in sql.split(";"):
-            stmt = stmt.strip()
-            if stmt:
-                pg_stmt = stmt.replace("?", "%s")
-                cur.execute(pg_stmt)
-        cur.close()
-    def commit(self):
-        pass  # autocommit
-    def close(self):
-        self._conn.close()
 
 
 def init_db():
@@ -1833,9 +1780,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
 
 def main():
     init_db()
-    db_mode = "PostgreSQL" if os.environ.get("DATABASE_URL", "") else "SQLite"
-    print(f"数据库: {db_mode}  (表已就绪)")
-    # Auto-seed if questions table is empty (uses server.py's get_db, which handles PostgreSQL)
+    print("数据库: SQLite (表已就绪)")
+    # Auto-seed if questions table is empty
+    conn = get_db()
     conn = get_db()
     count = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
     if count == 0:
