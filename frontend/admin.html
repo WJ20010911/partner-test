@@ -495,7 +495,7 @@
           html += '<div class="user-info"><span class="email">' + escapeHtml(u.username || u.email) + '</span>';
           html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + (u.created_at || '').slice(0,10) + '</span></div>';
           html += '<div>';
-          if (u.role === 'test') {
+          if (u.role === 'test' || u.role === 'user') {
             html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteUser(\'' + u.id + '\')">删除</button>';
           } else if (u.role === 'contributor') {
             if (!u.banned) {
