@@ -125,7 +125,7 @@
         const li = document.createElement('li');
         const btn = document.createElement('button');
         btn.className = 'option-btn';
-        btn.textContent = opt.text;
+        btn.innerHTML = escapeHtml(opt.text || '');
         btn.onclick = function() { selectOption(i); };
         btn.dataset.index = i;
         li.appendChild(btn);

@@ -2233,45 +2233,41 @@ def main():
     init_db()
     db_mode = "PostgreSQL" if os.environ.get("DATABASE_URL", "") else "SQLite"
     print(f"数据库: {db_mode}  (表已就绪)")
-    # Seed version check: re-seed if QUESTIONS_JSON hash changed
     conn = get_db()
     try:
-        from seed_questions import QUESTIONS_JSON
-        seed_hash = hashlib.md5(QUESTIONS_JSON.encode("utf-8")).hexdigest()
-        row = conn.execute("SELECT value FROM seed_version WHERE key = 'questions_hash'").fetchone()
-        old_hash = row["value"] if row else ""
-        if old_hash != seed_hash:
-            print("Seed data changed, re-seeding questions...")
-            # Clear old questions only, keep test_records and question_skips for aggregate stats
-            conn.execute("DELETE FROM question_tags")
-            conn.execute("DELETE FROM tags")
-            conn.execute("DELETE FROM questions")
-            questions = json.loads(QUESTIONS_JSON)
-            now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-            for q in questions:
-                qid = uuid.uuid4().hex[:8]
-                conn.execute(
-                    "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)",
-                    (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), 0, now)
-                )
-                for tag_name in q.get("tags", []):
-                    tag_name = tag_name.strip()
-                    if not tag_name:
-                        continue
-                    existing = conn.execute("SELECT id FROM tags WHERE name = ?", (tag_name,)).fetchone()
-                    tid = existing["id"] if existing else uuid.uuid4().hex[:8]
-                    if not existing:
-                        conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
-                    conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
-            # Store seed hash
-            conn.execute("DELETE FROM seed_version WHERE key = 'questions_hash'")
-            conn.execute("INSERT INTO seed_version (key, value) VALUES (?, ?)", ('questions_hash', seed_hash))
-            conn.commit()
-            print(f"Seeded {len(questions)} questions (hash: {seed_hash[:8]}...).")
+        # 环境变量跳过 seed（用于 Railway 上已手动编辑题库的情况）
+        if os.environ.get("SKIP_SEED", "").lower() in ("1", "true", "yes"):
+            print("SKIP_SEED 已设置，跳过自动 seed。")
         else:
-            print(f"Seed unchanged (hash: {seed_hash[:8]}...), skipping.")
+            # Only seed if questions table is empty (fresh deploy)
+            existing = conn.execute("SELECT COUNT(*) as c FROM questions").fetchone()
+            if existing and existing["c"] > 0:
+                print(f"题库已有 {existing['c']} 道题，跳过自动 seed（保留手动修改）。")
+            else:
+                from seed_questions import QUESTIONS_JSON
+                questions = json.loads(QUESTIONS_JSON)
+                now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+                for q in questions:
+                    qid = uuid.uuid4().hex[:8]
+                    conn.execute(
+                        "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)",
+                        (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), 0, now)
+                    )
+                    for tag_name in q.get("tags", []):
+                        tag_name = tag_name.strip()
+                        if not tag_name:
+                            continue
+                        existing_tag = conn.execute("SELECT id FROM tags WHERE name = ?", (tag_name,)).fetchone()
+                        tid = existing_tag["id"] if existing_tag else uuid.uuid4().hex[:8]
+                        if not existing_tag:
+                            conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
+                        conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
+                conn.commit()
+                print(f"首次部署：已导入 {len(questions)} 道题。")
     except ImportError:
         print("Warning: seed_questions.py not found, skipping seed.")
+    except Exception as e:
+        print(f"Seed error (non-fatal): {e}")
     conn.close()
 
     host = os.environ.get("HOST", "0.0.0.0")
