@@ -515,6 +515,10 @@ def init_db():
             rejected INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS seed_version (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
     """)
     # Add banned column to users if not exists
     try:
@@ -1973,13 +1977,21 @@ def main():
     init_db()
     db_mode = "PostgreSQL" if os.environ.get("DATABASE_URL", "") else "SQLite"
     print(f"数据库: {db_mode}  (表已就绪)")
-    # Auto-seed if questions table is empty (uses server.py's get_db, which handles PostgreSQL)
+    # Seed version check: re-seed if QUESTIONS_JSON hash changed
     conn = get_db()
-    count = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
-    if count == 0:
-        print("Questions table empty, auto-seeding...")
-        try:
-            from seed_questions import QUESTIONS_JSON
+    try:
+        from seed_questions import QUESTIONS_JSON
+        seed_hash = hashlib.md5(QUESTIONS_JSON.encode("utf-8")).hexdigest()
+        row = conn.execute("SELECT value FROM seed_version WHERE key = 'questions_hash'").fetchone()
+        old_hash = row["value"] if row else ""
+        if old_hash != seed_hash:
+            print("Seed data changed, re-seeding questions...")
+            # Clear old questions and related data
+            conn.execute("DELETE FROM question_tags")
+            conn.execute("DELETE FROM tags")
+            conn.execute("DELETE FROM test_records")
+            conn.execute("DELETE FROM question_skips")
+            conn.execute("DELETE FROM questions")
             questions = json.loads(QUESTIONS_JSON)
             now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
             for q in questions:
@@ -1997,10 +2009,14 @@ def main():
                     if not existing:
                         conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
                     conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
+            # Store seed hash
+            conn.execute("INSERT OR REPLACE INTO seed_version (key, value) VALUES ('questions_hash', ?)", (seed_hash,))
             conn.commit()
-            print(f"Seeded {len(questions)} questions.")
-        except ImportError:
-            print("Warning: seed_questions.py not found, skipping seed.")
+            print(f"Seeded {len(questions)} questions (hash: {seed_hash[:8]}...).")
+        else:
+            print(f"Seed unchanged (hash: {seed_hash[:8]}...), skipping.")
+    except ImportError:
+        print("Warning: seed_questions.py not found, skipping seed.")
     conn.close()
 
     host = os.environ.get("HOST", "0.0.0.0")
