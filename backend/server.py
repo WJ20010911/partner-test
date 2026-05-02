@@ -12,6 +12,10 @@ import uuid
 import os
 import re
 import random
+import threading
+import glob
+import shutil
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse, parse_qs
 import urllib.request
@@ -22,6 +26,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "partner_test.db")
 SECRET_KEY = os.environ.get("SECRET_KEY", "partner-test-secret-change-in-prod")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "123123")
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+BACKUP_DIR = os.environ.get("BACKUP_DIR", "/Lupin/Partner_BackUp")
 QUESTION_COUNT_PER_TEST = 12
 TOKEN_EXPIRY_HOURS = 72
 BAIDU_API_KEY = os.environ.get("BAIDU_API_KEY", "")
@@ -527,6 +532,11 @@ def init_db():
             token TEXT NOT NULL,
             created_at TEXT NOT NULL,
             backed_up_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS full_backups (
+            id TEXT PRIMARY KEY,
+            snapshot TEXT NOT NULL,
+            created_at TEXT NOT NULL
         );
     """)
     # Add banned column to users if not exists
@@ -1648,34 +1658,92 @@ def handle_backup_restore(headers, body):
 
 # ── Full Export / Restore (一键跑路) ─────────────────────
 
+def _build_full_backup_data(conn):
+    """Build the full backup data dict from the database."""
+    def fetch_all(sql):
+        rows = conn.execute(sql).fetchall()
+        return [{k: r[k] for k in r.keys()} for r in rows]
+
+    return {
+        "exported_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        "version": "1.0",
+        "tags": fetch_all("SELECT * FROM tags ORDER BY name"),
+        "users": fetch_all("SELECT * FROM users ORDER BY created_at"),
+        "questions": fetch_all("SELECT * FROM questions ORDER BY created_at"),
+        "question_tags": fetch_all("SELECT * FROM question_tags"),
+        "test_records": fetch_all("SELECT * FROM test_records ORDER BY created_at"),
+        "backup_records": fetch_all("SELECT * FROM backup_records ORDER BY created_at"),
+        "question_skips": fetch_all("SELECT * FROM question_skips ORDER BY created_at"),
+        "admin_logs": fetch_all("SELECT * FROM admin_logs ORDER BY created_at"),
+        "tester_nicknames": fetch_all("SELECT * FROM tester_nicknames ORDER BY created_at"),
+        "question_bank_log": fetch_all("SELECT * FROM question_bank_log ORDER BY created_at"),
+        "seed_version": fetch_all("SELECT * FROM seed_version"),
+    }
+
+
 def handle_full_export(headers):
     user, err = require_admin(headers)
     if err:
         return err
     conn = get_db()
     try:
-        def fetch_all(sql):
-            rows = conn.execute(sql).fetchall()
-            return [{k: r[k] for k in r.keys()} for r in rows]
-
-        data = {
-            "exported_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            "version": "1.0",
-            "tags": fetch_all("SELECT * FROM tags ORDER BY name"),
-            "users": fetch_all("SELECT * FROM users ORDER BY created_at"),
-            "questions": fetch_all("SELECT * FROM questions ORDER BY created_at"),
-            "question_tags": fetch_all("SELECT * FROM question_tags"),
-            "test_records": fetch_all("SELECT * FROM test_records ORDER BY created_at"),
-            "backup_records": fetch_all("SELECT * FROM backup_records ORDER BY created_at"),
-            "question_skips": fetch_all("SELECT * FROM question_skips ORDER BY created_at"),
-            "admin_logs": fetch_all("SELECT * FROM admin_logs ORDER BY created_at"),
-            "tester_nicknames": fetch_all("SELECT * FROM tester_nicknames ORDER BY created_at"),
-            "question_bank_log": fetch_all("SELECT * FROM question_bank_log ORDER BY created_at"),
-            "seed_version": fetch_all("SELECT * FROM seed_version"),
-        }
+        data = _build_full_backup_data(conn)
         return json_response(data)
     finally:
         conn.close()
+
+
+def do_auto_backup():
+    """Generate a full backup, save to DB and local file. Runs in background thread."""
+    bid = uuid.uuid4().hex[:8]
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # ── Generate backup data ──
+    conn = get_db()
+    try:
+        data = _build_full_backup_data(conn)
+
+        # ── Save to DB ──
+        conn.execute(
+            "INSERT OR REPLACE INTO full_backups (id, snapshot, created_at) VALUES (?, ?, ?)",
+            (bid, json.dumps(data, ensure_ascii=False), now)
+        )
+        conn.commit()
+        backup_count = conn.execute("SELECT COUNT(*) as c FROM full_backups").fetchone()["c"]
+        print(f"[{now}] 自动全量备份已存入数据库 (id={bid}) — 累计 {backup_count} 次")
+    except Exception as e:
+        print(f"[{now}] 自动备份 DB 写入失败: {e}")
+        return
+    finally:
+        conn.close()
+
+    # ── Save to local file ──
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        filename = f"backup-{now.replace(':', '-')}.json"
+        filepath = os.path.join(BACKUP_DIR, filename)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f"[{now}] 自动备份已写入文件: {filepath}")
+
+        # ── Rotate: keep at most 24 files ──
+        pattern = os.path.join(BACKUP_DIR, "backup-*.json")
+        files = sorted(glob.glob(pattern))
+        while len(files) > 24:
+            oldest = files.pop(0)
+            os.remove(oldest)
+            print(f"[{now}] 删除旧备份: {oldest}")
+    except Exception as e:
+        print(f"[{now}] 自动备份文件写入失败: {e}")
+
+
+def _backup_loop():
+    """Background loop: run do_auto_backup() every 3600 seconds."""
+    # Small initial delay so server finishes startup before first backup
+    time.sleep(10)
+    while True:
+        do_auto_backup()
+        time.sleep(3600)
 
 
 def handle_full_restore(headers, body):
@@ -2275,6 +2343,12 @@ def main():
     print(f"Server running at http://{host}:{PORT}")
     print(f"Frontend: http://{host}:{PORT}/")
     print(f"API: http://{host}:{PORT}/api/")
+
+    # ── Start hourly auto-backup thread ──
+    backup_thread = threading.Thread(target=_backup_loop, daemon=True)
+    backup_thread.start()
+    print(f"自动备份线程已启动（每小时一次 → {BACKUP_DIR}，最多保留24个文件）")
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
