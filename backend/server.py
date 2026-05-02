@@ -1986,11 +1986,9 @@ def main():
         old_hash = row["value"] if row else ""
         if old_hash != seed_hash:
             print("Seed data changed, re-seeding questions...")
-            # Clear old questions and related data
+            # Clear old questions only, keep test_records and question_skips for aggregate stats
             conn.execute("DELETE FROM question_tags")
             conn.execute("DELETE FROM tags")
-            conn.execute("DELETE FROM test_records")
-            conn.execute("DELETE FROM question_skips")
             conn.execute("DELETE FROM questions")
             questions = json.loads(QUESTIONS_JSON)
             now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
