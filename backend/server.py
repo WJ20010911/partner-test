@@ -2010,7 +2010,8 @@ def main():
                         conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
                     conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
             # Store seed hash
-            conn.execute("INSERT OR REPLACE INTO seed_version (key, value) VALUES ('questions_hash', ?)", (seed_hash,))
+            conn.execute("DELETE FROM seed_version WHERE key = 'questions_hash'")
+            conn.execute("INSERT INTO seed_version (key, value) VALUES (?, ?)", ('questions_hash', seed_hash))
             conn.commit()
             print(f"Seeded {len(questions)} questions (hash: {seed_hash[:8]}...).")
         else:
