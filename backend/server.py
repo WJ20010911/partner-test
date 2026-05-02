@@ -519,6 +519,15 @@ def init_db():
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS backup_records (
+            id TEXT PRIMARY KEY,
+            answers TEXT NOT NULL,
+            surface_score REAL NOT NULL,
+            real_score REAL NOT NULL,
+            token TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            backed_up_at TEXT NOT NULL
+        );
     """)
     # Add banned column to users if not exists
     try:
@@ -896,6 +905,11 @@ def handle_submit_test(headers, body):
         conn.execute(
             "INSERT INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+        )
+        # Dual-write to backup_records for redundancy
+        conn.execute(
+            "INSERT INTO backup_records (id, answers, surface_score, real_score, token, created_at, backed_up_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
         return json_response({
@@ -1564,6 +1578,244 @@ def handle_admin_get_config(headers):
         conn.close()
     return json_response(config)
 
+
+# ── Backup / Restore ─────────────────────────────────────
+
+def handle_backup_export(headers):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    conn = get_db()
+    try:
+        records = conn.execute(
+            "SELECT * FROM backup_records ORDER BY created_at DESC"
+        ).fetchall()
+        nicknames = conn.execute(
+            "SELECT * FROM tester_nicknames ORDER BY created_at DESC"
+        ).fetchall()
+        data = {
+            "exported_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "test_records": [dict(r) for r in records],
+            "tester_nicknames": [dict(n) for n in nicknames],
+        }
+        # Convert Row objects to plain dicts
+        data["test_records"] = [{k: r[k] for k in r.keys()} for r in records]
+        data["tester_nicknames"] = [{k: n[k] for k in n.keys()} for n in nicknames]
+        return json_response(data)
+    finally:
+        conn.close()
+
+
+def handle_backup_restore(headers, body):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    data = body
+    if not data or "test_records" not in data:
+        return error_response("Invalid backup data")
+    conn = get_db()
+    try:
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        restored_records = 0
+        restored_nicknames = 0
+        for rec in data.get("test_records", []):
+            rid = rec.get("id", uuid.uuid4().hex[:8])
+            conn.execute(
+                "INSERT OR IGNORE INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (rid, rec.get("answers", "[]"), rec.get("surface_score", 0), rec.get("real_score", 0), rec.get("token", ""), rec.get("created_at", now))
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO backup_records (id, answers, surface_score, real_score, token, created_at, backed_up_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (rid, rec.get("answers", "[]"), rec.get("surface_score", 0), rec.get("real_score", 0), rec.get("token", ""), rec.get("created_at", now), now)
+            )
+            restored_records += 1
+        for n in data.get("tester_nicknames", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO tester_nicknames (token, nickname, created_at) VALUES (?, ?, ?)",
+                (n.get("token", ""), n.get("nickname", ""), n.get("created_at", now))
+            )
+            restored_nicknames += 1
+        conn.commit()
+        log_admin_action(headers, f"restore_backup: {restored_records} records, {restored_nicknames} nicknames")
+        return json_response({
+            "status": "ok",
+            "restored_records": restored_records,
+            "restored_nicknames": restored_nicknames,
+        })
+    finally:
+        conn.close()
+
+
+# ── Full Export / Restore (一键跑路) ─────────────────────
+
+def handle_full_export(headers):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    conn = get_db()
+    try:
+        def fetch_all(sql):
+            rows = conn.execute(sql).fetchall()
+            return [{k: r[k] for k in r.keys()} for r in rows]
+
+        data = {
+            "exported_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "version": "1.0",
+            "tags": fetch_all("SELECT * FROM tags ORDER BY name"),
+            "users": fetch_all("SELECT * FROM users ORDER BY created_at"),
+            "questions": fetch_all("SELECT * FROM questions ORDER BY created_at"),
+            "question_tags": fetch_all("SELECT * FROM question_tags"),
+            "test_records": fetch_all("SELECT * FROM test_records ORDER BY created_at"),
+            "backup_records": fetch_all("SELECT * FROM backup_records ORDER BY created_at"),
+            "question_skips": fetch_all("SELECT * FROM question_skips ORDER BY created_at"),
+            "admin_logs": fetch_all("SELECT * FROM admin_logs ORDER BY created_at"),
+            "tester_nicknames": fetch_all("SELECT * FROM tester_nicknames ORDER BY created_at"),
+            "question_bank_log": fetch_all("SELECT * FROM question_bank_log ORDER BY created_at"),
+            "seed_version": fetch_all("SELECT * FROM seed_version"),
+        }
+        return json_response(data)
+    finally:
+        conn.close()
+
+
+def handle_full_restore(headers, body):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    data = body
+    if not data or "questions" not in data:
+        return error_response("Invalid migration data: missing 'questions'")
+
+    conn = get_db()
+    try:
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        # ── Clear existing data (FK-safe order) ──
+        tables = [
+            "question_tags", "questions", "question_skips", "backup_records",
+            "test_records", "admin_logs", "tester_nicknames",
+            "question_bank_log", "seed_version", "tags",
+        ]
+        # Don't clear users — keep admin accounts intact.
+        # Don't clear seed_version _completely_ — keep migration safe.
+        for t in tables:
+            try:
+                conn.execute(f"DELETE FROM {t}")
+            except Exception:
+                pass  # table might not exist
+
+        counts = {}
+
+        # ── Restore tags ──
+        counts["tags"] = 0
+        for row in data.get("tags", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO tags (id, name) VALUES (?, ?)",
+                (row.get("id", ""), row.get("name", ""))
+            )
+            counts["tags"] += 1
+
+        # ── Restore questions (FK: submitter_id references users.id) ──
+        counts["questions"] = 0
+        for row in data.get("questions", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    row.get("id", ""),
+                    row.get("content", ""),
+                    row.get("options", "[]"),
+                    row.get("dimension"),
+                    row.get("weight", 1.0),
+                    row.get("time_limit", 0),
+                    row.get("status", "approved"),
+                    row.get("submitter_id", "test_uploader"),
+                    row.get("created_at", now),
+                )
+            )
+            counts["questions"] += 1
+
+        # ── Restore question_tags ──
+        counts["question_tags"] = 0
+        for row in data.get("question_tags", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)",
+                (row.get("question_id", ""), row.get("tag_id", ""))
+            )
+            counts["question_tags"] += 1
+
+        # ── Restore test_records ──
+        counts["test_records"] = 0
+        for row in data.get("test_records", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (row.get("id", ""), row.get("answers", "[]"), row.get("surface_score", 0), row.get("real_score", 0), row.get("token", ""), row.get("created_at", now))
+            )
+            counts["test_records"] += 1
+
+        # ── Restore backup_records ──
+        counts["backup_records"] = 0
+        for row in data.get("backup_records", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO backup_records (id, answers, surface_score, real_score, token, created_at, backed_up_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (row.get("id", ""), row.get("answers", "[]"), row.get("surface_score", 0), row.get("real_score", 0), row.get("token", ""), row.get("created_at", now), row.get("backed_up_at", now))
+            )
+            counts["backup_records"] += 1
+
+        # ── Restore complaint skips ──
+        counts["question_skips"] = 0
+        for row in data.get("question_skips", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO question_skips (id, question_id, reason, created_at) VALUES (?, ?, ?, ?)",
+                (row.get("id", ""), row.get("question_id", ""), row.get("reason", ""), row.get("created_at", now))
+            )
+            counts["question_skips"] += 1
+
+        # ── Restore admin logs ──
+        counts["admin_logs"] = 0
+        for row in data.get("admin_logs", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO admin_logs (id, action, detail, ip, created_at) VALUES (?, ?, ?, ?, ?)",
+                (row.get("id", ""), row.get("action", ""), row.get("detail", ""), row.get("ip", ""), row.get("created_at", now))
+            )
+            counts["admin_logs"] += 1
+
+        # ── Restore tester nicknames ──
+        counts["tester_nicknames"] = 0
+        for row in data.get("tester_nicknames", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO tester_nicknames (token, nickname, created_at) VALUES (?, ?, ?)",
+                (row.get("token", ""), row.get("nickname", ""), row.get("created_at", now))
+            )
+            counts["tester_nicknames"] += 1
+
+        # ── Restore question_bank_log ──
+        counts["question_bank_log"] = 0
+        for row in data.get("question_bank_log", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO question_bank_log (id, action, total, approved, pending, rejected, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (row.get("id", ""), row.get("action", ""), row.get("total", 0), row.get("approved", 0), row.get("pending", 0), row.get("rejected", 0), row.get("created_at", now))
+            )
+            counts["question_bank_log"] += 1
+
+        # ── Restore seed_version ──
+        counts["seed_version"] = 0
+        for row in data.get("seed_version", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO seed_version (key, value) VALUES (?, ?)",
+                (row.get("key", ""), row.get("value", ""))
+            )
+            counts["seed_version"] += 1
+
+        conn.commit()
+        log_admin_action(headers, f"full_restore: {counts}")
+        return json_response({"status": "ok", "counts": counts})
+    except Exception as e:
+        conn.rollback()
+        return error_response(f"Restore failed: {e}")
+    finally:
+        conn.close()
+
+
 # ── Router ────────────────────────────────────────────────
 
 API_ROUTES = []
@@ -1626,6 +1878,10 @@ route("GET", r"/api/questions/all")(lambda h, b, *a: handle_all_questions(h))
 route("POST", r"/api/admin/questions/delete")(lambda h, b, *a: handle_admin_delete_question(h, b))
 route("POST", r"/api/admin/questions/batch-delete")(lambda h, b, *a: handle_admin_batch_delete(h, b))
 route("POST", r"/api/admin/questions/batch-set-timelimit")(lambda h, b, *a: handle_admin_batch_set_timelimit(h, b))
+route("GET", r"/api/admin/backup/export")(lambda h, b, *a: handle_backup_export(h))
+route("POST", r"/api/admin/backup/restore")(lambda h, b, *a: handle_backup_restore(h, b))
+route("GET", r"/api/admin/full-export")(lambda h, b, *a: handle_full_export(h))
+route("POST", r"/api/admin/full-restore")(lambda h, b, *a: handle_full_restore(h, b))
 
 # ── Test question pool for quick-fill ────────────────────
 

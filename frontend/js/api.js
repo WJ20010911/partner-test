@@ -77,6 +77,14 @@ const api = {
   adminBatchDelete(ids, password) { return this.post('/api/admin/questions/batch-delete', { ids, password }); },
   adminBatchSetTimeLimit(ids, timeLimit, password) { return this.post('/api/admin/questions/batch-set-timelimit', { ids, time_limit: timeLimit, password }); },
 
+  // Backup / Restore
+  adminBackupExport() { return this.get('/api/admin/backup/export'); },
+  adminBackupRestore(data) { return this.post('/api/admin/backup/restore', data); },
+
+  // Full migration (一键跑路)
+  adminFullExport() { return this.get('/api/admin/full-export'); },
+  adminFullRestore(data) { return this.post('/api/admin/full-restore', data); },
+
   // Test
   submitTest(answers) { return this.post('/api/test/submit', { answers }); },
   verifyRecord(id) { return this.get(`/api/test/verify/${id}`); },
