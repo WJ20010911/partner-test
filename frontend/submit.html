@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>上传题库 - 伴侣匹配测试</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .dimension-hint { margin-top:8px; padding:10px 14px; background:#f0f7ff; border:1px solid #d4e3f7; border-radius:8px; font-size:13px; line-height:1.6; color:var(--text-color); display:none; }
+    .dimension-hint.show { display:block; }
+  </style>
 </head>
 <body>
   <nav class="nav">
@@ -38,6 +42,9 @@
           <option value='对"关系现实感"的认知'>对"关系现实感"的认知</option>
           <option value="其他">其他</option>
         </select>
+        <div id="dimension-desc" class="dimension-hint">
+          <span style="color:var(--text-light);font-style:italic;">请选择一个分类查看说明</span>
+        </div>
       </div>
       <div id="options-container">
         <div class="form-group">
@@ -79,6 +86,26 @@
     }
 
     function logout() { api.clearToken(); window.location.href = '/index.html'; }
+
+    // Dimension descriptions
+    var dimDescs = {
+      '常识与思维弹性': '考察生活常识、逻辑反诈意识、思维变通能力和抓大放小的判断力。',
+      '人性底线与共情基准': '考察对暴力、霸凌、隐私权、身体自主权等基本人道的立场，以及对社会弱者的共情能力。',
+      '日常摩擦中的本能反应': '模拟日常相处中的分歧、失误、疏忽等场景，考察情绪管理、包容度与沟通模式。',
+      '对"关系现实感"的认知': '考察对长期关系中的平淡期、衰老、财务压力、责任分担等现实维度的认知成熟度。',
+    };
+    document.getElementById('q-dimension').addEventListener('change', function() {
+      var box = document.getElementById('dimension-desc');
+      var desc = dimDescs[this.value];
+      if (desc) {
+        box.innerHTML = '<strong>' + this.value + '</strong> — ' + desc;
+        box.classList.add('show');
+      } else {
+        box.innerHTML = '<span style="color:var(--text-light);font-style:italic;">请选择一个分类查看说明</span>';
+        box.classList.remove('show');
+      }
+    });
+
     async function doSubmit() {
       const content = document.getElementById('q-content').value.trim();
       if (!content) { showFlash('请输入题干', 'error'); return; }
