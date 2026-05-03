@@ -1321,7 +1321,8 @@ def handle_public_stats(headers, body, *args):
     conn = get_db()
     try:
         total = conn.execute("SELECT COUNT(*) as c FROM test_records").fetchone()["c"]
-        return json_response({"total_tests": total})
+        qcount = conn.execute("SELECT COUNT(*) as c FROM questions WHERE status='approved'").fetchone()["c"]
+        return json_response({"total_tests": total, "question_count": qcount})
     finally:
         conn.close()
 

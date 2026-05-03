@@ -21,9 +21,12 @@
         你会遇到一些情景题，请凭第一感觉选择答案。<br>
         如果某道题不适用或让你不适，可以使用「跳过」或「投诉并跳过」。
       </p>
-      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:#856404;line-height:1.6;">
-        <strong>提示：</strong>当前这 40 道题属于早期的占位内容，尚不能代表网站的完整意图。<br>
-        测试分数仅供参考，不必过分在意结果。<br>
+      <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
+        <strong>📖 操作说明</strong><br>
+        <strong>当前题库共 <span id="bank-count">--</span> 道题</strong>，每次随机抽取部分题目作答。<br><br>
+        · <strong>跳过</strong> — 这道题不适合你，换一道类似的题继续。<br>
+        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br>
+        · <strong>延长 5 秒</strong> — 倒计时快结束时可使用，每道题最多加 3 次。<br><br>
         欢迎点击右上角「上传题库」来贡献题目，一起让测试更丰富、更有参考价值。
       </div>
       <button class="btn btn-primary" onclick="startTest()">开始答题</button>
@@ -71,6 +74,11 @@
     const MAX_EXTENDS = 3;
     let timerRemaining = 0;
     let timerLimit = 0;
+
+    // Fetch bank count on page load
+    (async function() {
+      try { var s = await api.getPublicStats(); document.getElementById('bank-count').textContent = s.question_count || '--'; } catch(e) {}
+    })();
 
     async function startTest() {
       document.getElementById('start-screen').classList.add('hidden');
