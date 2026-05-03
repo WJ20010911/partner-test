@@ -2519,17 +2519,6 @@ def main():
                     qid = uuid.uuid4().hex[:8]
                     conn.execute("INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)", (qid, content, options_json, q.get("dimension"), weight, q.get("time_limit", 15), now))
                     inserted += 1
-                # Refresh tags
-                conn.execute("DELETE FROM question_tags WHERE question_id=?", (qid,))
-                for tag_name in q.get("tags", []):
-                    tag_name = tag_name.strip()
-                    if not tag_name:
-                        continue
-                    existing_tag = conn.execute("SELECT id FROM tags WHERE name = ?", (tag_name,)).fetchone()
-                    tid = existing_tag["id"] if existing_tag else uuid.uuid4().hex[:8]
-                    if not existing_tag:
-                        conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
-                    conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
             # Delete questions removed from seed data
             seed_contents = {q["content"] for q in seed_qs}
             for content, qid in existing_by_content.items():
