@@ -2513,11 +2513,11 @@ def main():
                 weight = q.get("weight", 1.0)
                 if content in existing_by_content:
                     qid = existing_by_content[content]
-                    conn.execute("UPDATE questions SET options=?, dimension=?, weight=?, time_limit=0 WHERE id=?", (options_json, q.get("dimension"), weight, qid))
+                    conn.execute("UPDATE questions SET options=?, dimension=?, weight=?, time_limit=? WHERE id=?", (options_json, q.get("dimension"), weight, q.get("time_limit", 15), qid))
                     updated += 1
                 else:
                     qid = uuid.uuid4().hex[:8]
-                    conn.execute("INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)", (qid, content, options_json, q.get("dimension"), weight, 0, now))
+                    conn.execute("INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)", (qid, content, options_json, q.get("dimension"), weight, q.get("time_limit", 15), now))
                     inserted += 1
                 # Refresh tags
                 conn.execute("DELETE FROM question_tags WHERE question_id=?", (qid,))
