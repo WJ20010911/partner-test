@@ -26,7 +26,7 @@
         <strong>⚠️ 注意：分数是反着给的</strong><br>
         最正确的选项应填在 <strong>0 分</strong>（得分最低），<br>
         最离谱/最不理想的选项应填在 <strong>5 分</strong>（得分最高），<br>
-        分值 1~3 用于中间梯度，4 为留白暂不使用。旨在麻痹做题人，防止猜出真实评分逻辑。
+        分值 0~5 共 6 档，每题最少 <strong>4 个选项</strong>、最多 <strong>6 个选项</strong>。旨在麻痹做题人，防止猜出真实评分逻辑。
       </div>
       <div class="form-group">
         <label for="q-content">题干</label>
@@ -53,15 +53,28 @@
         </div>
         <div class="form-group">
           <label>1 分选项</label>
-          <input type="text" class="form-input option-text" placeholder="较不理想的反应" data-opt="1">
+          <input type="text" class="form-input option-text" placeholder="轻微的副作用" data-opt="1">
         </div>
         <div class="form-group">
           <label>2 分选项</label>
-          <input type="text" class="form-input option-text" placeholder="较理想的反应" data-opt="2">
+          <input type="text" class="form-input option-text" placeholder="较不理想的反应" data-opt="2">
         </div>
         <div class="form-group">
-          <label>3 分选项（最离谱 — 得分最高）</label>
-          <input type="text" class="form-input option-text" placeholder="最离谱的反应（3分）" data-opt="3">
+          <label>3 分选项</label>
+          <input type="text" class="form-input option-text" placeholder="不理想的反应" data-opt="3">
+        </div>
+        <div class="form-group extra-opt" style="display:none;">
+          <label>4 分选项</label>
+          <input type="text" class="form-input option-text" placeholder="较严重的不理想反应" data-opt="4">
+        </div>
+        <div class="form-group">
+          <label>5 分选项（最离谱 — 得分最高）</label>
+          <input type="text" class="form-input option-text" placeholder="最离谱的反应（5分）" data-opt="5">
+        </div>
+        <div style="margin-top:4px;font-size:13px;color:var(--text-light);">
+          <span class="toggle-link" id="toggle-extra-opts" onclick="toggleExtraOpts()">+ 添加第 5 个选项</span>
+          <span style="margin:0 8px;color:var(--border);">|</span>
+          <span style="font-size:12px;">至少 4 个，最多 6 个</span>
         </div>
       </div>
       <div class="form-group">
@@ -106,6 +119,17 @@
       }
     });
 
+    // Toggle show/hide the 4 分 option (5th option)
+    var extraOptVisible = false;
+    function toggleExtraOpts() {
+      extraOptVisible = !extraOptVisible;
+      var el = document.querySelector('.extra-opt');
+      var link = document.getElementById('toggle-extra-opts');
+      if (!el) return;
+      el.style.display = extraOptVisible ? '' : 'none';
+      link.textContent = extraOptVisible ? '− 移除第 5 个选项' : '+ 添加第 5 个选项';
+    }
+
     async function doSubmit() {
       const content = document.getElementById('q-content').value.trim();
       if (!content) { showFlash('请输入题干', 'error'); return; }
@@ -114,7 +138,8 @@
       opts.forEach(function(o) {
         if (o.value.trim()) options.push({ text: o.value.trim(), score: parseInt(o.dataset.opt) });
       });
-      if (options.length < 4) { showFlash('请填写全部 4 个选项', 'error'); return; }
+      if (options.length < 4) { showFlash('请至少填写 4 个选项（最多 6 个）', 'error'); return; }
+      if (options.length > 6) { showFlash('最多只能 6 个选项', 'error'); return; }
       const dimension = document.getElementById('q-dimension').value || null;
       const timeLimit = parseInt(document.getElementById('q-time-limit').value) || 15;
       const tags = document.getElementById('q-tags').value.split(',').map(function(t) { return t.trim(); }).filter(Boolean);

@@ -916,14 +916,14 @@ def handle_submit_test(headers, body):
             w = row["weight"]
             time_limit = row["time_limit"]
             if behavior == "complaint":
-                real_score += 15.0 * w
+                real_score += 10.0 * w
                 sid = uuid.uuid4().hex[:8]
                 conn.execute(
                     "INSERT INTO question_skips (id, question_id, reason, created_at) VALUES (?, ?, 'complaint', ?)",
                     (sid, qid, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
                 )
             elif time_limit > 0 and time_taken > time_limit + 2:
-                real_score += 10.0 * w
+                real_score += 5.0 * w
             else:
                 options = json.loads(row["options"])
                 if 0 <= idx < len(options):
