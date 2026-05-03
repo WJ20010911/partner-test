@@ -104,7 +104,6 @@
     </div>
 
     <div class="card">
-      <div id="flash-container"></div>
       <div class="tab-bar">
         <button class="active" id="tab-overview" onclick="switchTab('overview')">概览</button>
         <button id="tab-pending" onclick="switchTab('pending')">待审核<span id="pending-badge" class="pending-badge"></span></button>
@@ -861,32 +860,32 @@
         a.download = 'backup-' + new Date().toISOString().slice(0,10) + '.json';
         a.click();
         URL.revokeObjectURL(url);
-        showFlash('备份文件已导出', 'success');
+        showFlash('备份文件已导出', 'success', 'backup-flash');
       } catch (e) {
-        showFlash('导出失败: ' + e.message, 'error');
+        showFlash('导出失败: ' + e.message, 'error', 'backup-flash');
       }
     }
 
     async function importBackup() {
       var input = document.getElementById('backup-file-input');
       if (!input || !input.files || !input.files[0]) {
-        showFlash('请先选择备份文件', 'error');
+        showFlash('请先选择备份文件', 'error', 'backup-flash');
         return;
       }
       try {
         var text = await input.files[0].text();
         var data = JSON.parse(text);
         if (!data.test_records) {
-          showFlash('无效的备份文件：缺少 test_records', 'error');
+          showFlash('无效的备份文件：缺少 test_records', 'error', 'backup-flash');
           return;
         }
         if (!confirm('确定要从备份文件恢复数据吗？\n共 ' + data.test_records.length + ' 条记录，' + (data.tester_nicknames || []).length + ' 条昵称。\n已存在的记录 ID 会被跳过。')) return;
         var result = await api.adminBackupRestore(data);
-        showFlash('恢复完成：' + result.restored_records + ' 条记录，' + result.restored_nicknames + ' 条昵称', 'success');
+        showFlash('恢复完成：' + result.restored_records + ' 条记录，' + result.restored_nicknames + ' 条昵称', 'success', 'backup-flash');
         // Refresh the backup tab
         loadBackup();
       } catch (e) {
-        showFlash('恢复失败: ' + e.message, 'error');
+        showFlash('恢复失败: ' + e.message, 'error', 'backup-flash');
       }
     }
 
@@ -917,8 +916,20 @@
       catch (e) { showFlash(e.message, 'error'); }
     }
 
-    function showFlash(msg, type) {
-      var container = document.getElementById('flash-container');
+    function showFlash(msg, type, targetId) {
+      var container;
+      if (targetId) {
+        container = document.getElementById(targetId);
+      } else {
+        // Fallback: find or create a flash container at the bottom of admin-content
+        container = document.getElementById('page-flash');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'page-flash';
+          var content = document.getElementById('admin-content');
+          if (content) content.appendChild(container);
+        }
+      }
       if (!container) return;
       container.innerHTML = '<div class="flash flash-' + type + '">' + msg + '</div>';
       setTimeout(function() { if (container) container.innerHTML = ''; }, 3000);
@@ -939,7 +950,8 @@
           '<button class="btn btn-outline" onclick="triggerAutoBackup()" style="padding:6px 16px;">⚡ 立即执行备份</button>' +
           '<button class="btn btn-outline" onclick="downloadLatestBackup()" style="padding:6px 16px;margin-left:4px;">⬇ 下载最新备份</button>' +
           '</div>' +
-          '<p style="font-size:12px;color:var(--text-light);margin-top:8px;">上次备份：' + lastTime + ' &nbsp;|&nbsp; 间隔范围：0.1 ∼ 24 小时，修改后约 1 分钟生效</p>';
+          '<p style="font-size:12px;color:var(--text-light);margin-top:8px;">上次备份：' + lastTime + ' &nbsp;|&nbsp; 间隔范围：0.1 ∼ 24 小时，修改后约 1 分钟生效</p>' +
+          '<div id="backup-flash"></div>';
       } catch (e) {
         var div = document.getElementById('auto-backup-config');
         if (div) div.innerHTML = '<p style="color:var(--text-light);font-size:13px;">加载配置失败: ' + e.message + '</p>';
@@ -951,24 +963,24 @@
       if (!input) return;
       var val = parseFloat(input.value);
       if (isNaN(val) || val < 0.1 || val > 24) {
-        showFlash('请输入 0.1 ~ 24 之间的有效数字', 'error');
+        showFlash('请输入 0.1 ~ 24 之间的有效数字', 'error', 'backup-flash');
         return;
       }
       try {
         await api.adminSetAutoBackupConfig(val);
-        showFlash('自动备份间隔已设置为 ' + val.toFixed(1) + ' 小时', 'success');
+        showFlash('自动备份间隔已设置为 ' + val.toFixed(1) + ' 小时', 'success', 'backup-flash');
       } catch (e) {
-        showFlash('设置失败: ' + e.message, 'error');
+        showFlash('设置失败: ' + e.message, 'error', 'backup-flash');
       }
     }
 
     async function triggerAutoBackup() {
       try {
         var result = await api.adminTriggerAutoBackup();
-        showFlash(result.message || '自动备份已触发', 'success');
+        showFlash(result.message || '自动备份已触发', 'success', 'backup-flash');
         loadAutoBackupConfig();
       } catch (e) {
-        showFlash('触发失败: ' + e.message, 'error');
+        showFlash('触发失败: ' + e.message, 'error', 'backup-flash');
       }
     }
 
@@ -983,9 +995,9 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        showFlash('正在下载最新备份...', 'success');
+        showFlash('正在下载最新备份...', 'success', 'backup-flash');
       } catch (e) {
-        showFlash('下载失败: ' + e.message, 'error');
+        showFlash('下载失败: ' + e.message, 'error', 'backup-flash');
       }
     }
 
