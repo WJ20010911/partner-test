@@ -126,7 +126,7 @@
     var currentTab = 'overview';
     var pendingPollTimer = null;
     var autoRefreshTimer = null;
-    var AUTO_REFRESH_MS = 30000; // 30秒自动刷新当前标签页
+    var AUTO_REFRESH_MS = 15000; // 15秒自动刷新当前标签页
 
     function getAdminToken() { return localStorage.getItem(ADMIN_TOKEN_KEY); }
     function setAdminToken(t) { localStorage.setItem(ADMIN_TOKEN_KEY, t); }
