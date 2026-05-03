@@ -1205,6 +1205,62 @@ def handle_admin_batch_set_timelimit(headers, body):
     finally:
         conn.close()
 
+# ── Batch Import ─────────────────────────────────────
+
+def handle_batch_import(headers, body):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    questions = body if isinstance(body, list) else body.get("questions", [])
+    if not isinstance(questions, list) or not questions:
+        return error_response("请提供 JSON 数组（每项包含 content、options 等字段）", 400)
+    conn = get_db()
+    try:
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        inserted = 0
+        errors = []
+        for i, q in enumerate(questions):
+            content = (q.get("content") or "").strip()
+            if not content:
+                errors.append(f"第 {i+1} 题：题干不能为空")
+                continue
+            options = q.get("options", [])
+            if not isinstance(options, list) or len(options) < 4 or len(options) > 6:
+                errors.append(f"第 {i+1} 题：选项数量应为 4-6 个，实际 {len(options) if isinstance(options, list) else '非法'}")
+                continue
+            opts_valid = True
+            for j, opt in enumerate(options):
+                if not isinstance(opt, dict) or not opt.get("text", "").strip() or not isinstance(opt.get("score"), (int, float)):
+                    errors.append(f"第 {i+1} 题：选项 {j+1} 格式错误（需要 text + score）")
+                    opts_valid = False
+                    break
+            if not opts_valid:
+                continue
+            qid = uuid.uuid4().hex[:8]
+            weight = q.get("weight", 1)
+            if weight not in (1, 2, 3):
+                weight = 1
+            conn.execute(
+                "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'admin', ?)",
+                (qid, content, json.dumps(options, ensure_ascii=False), q.get("dimension"), weight, int(q.get("time_limit", 15)), now)
+            )
+            for tag_name in q.get("tags", []):
+                tag_name = tag_name.strip()
+                if not tag_name:
+                    continue
+                existing_tag = conn.execute("SELECT id FROM tags WHERE name = ?", (tag_name,)).fetchone()
+                tid = existing_tag["id"] if existing_tag else uuid.uuid4().hex[:8]
+                if not existing_tag:
+                    conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
+                conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
+            inserted += 1
+        conn.commit()
+        _log_question_bank(conn, "batch_import")
+        log_admin_action(headers, "batch_import", f"Imported {inserted} questions ({len(errors)} errors)")
+        return json_response({"inserted": inserted, "errors": errors, "total": len(questions)})
+    finally:
+        conn.close()
+
 # ── Contributors ─────────────────────────────────────
 
 def handle_contributors(headers):
@@ -2084,6 +2140,7 @@ route("GET", r"/api/admin/backup/export")(lambda h, b, *a: handle_backup_export(
 route("POST", r"/api/admin/backup/restore")(lambda h, b, *a: handle_backup_restore(h, b))
 route("GET", r"/api/admin/full-export")(lambda h, b, *a: handle_full_export(h))
 route("POST", r"/api/admin/full-restore")(lambda h, b, *a: handle_full_restore(h, b))
+route("POST", r"/api/admin/questions/batch-import")(lambda h, b, *a: handle_batch_import(h, b))
 
 # ── Test question pool for quick-fill ────────────────────
 

@@ -310,6 +310,27 @@
       switchTab('all');
     }
 
+    function handleBatchImport(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = async function(e) {
+        var questions;
+        try { questions = JSON.parse(e.target.result); } catch(ex) { showFlash('JSON 解析失败: ' + ex.message, 'error'); return; }
+        if (!Array.isArray(questions)) { showFlash('JSON 格式错误：需要一个数组', 'error'); return; }
+        try {
+          var res = await api.post('/api/admin/questions/batch-import', questions);
+          var msg = '成功导入 ' + res.inserted + ' / ' + res.total + ' 题';
+          if (res.errors && res.errors.length) msg += '，' + res.errors.length + ' 条错误（见控制台）';
+          showFlash(msg, res.errors && res.errors.length ? 'warn' : 'success');
+          if (res.errors && res.errors.length) console.warn('批量导入错误:', res.errors);
+        } catch (ex) { showFlash('导入失败: ' + ex.message, 'error'); }
+        event.target.value = '';
+        renderAllTable();
+      };
+      reader.readAsText(file);
+    }
+
     function doSearch() {
       var val = document.getElementById('q-search').value;
       searchQuery = val.toLowerCase();
@@ -337,7 +358,7 @@
       allQuestions.forEach(function(q) { var d = q.dimension || '未分类'; dims[d] = (dims[d] || 0) + 1; });
       var dimNames = Object.keys(dims).sort();
 
-      var html = '<div class="section-title">全部题库 (' + filtered.length + ' / ' + allQuestions.length + ' 题)</div>';
+      var html = '<div class="section-title" style="display:flex;align-items:center;gap:10px;">全部题库 (' + filtered.length + ' / ' + allQuestions.length + ' 题)<button class="btn btn-sm" onclick="document.getElementById(\'batch-import-input\').click()" style="font-size:12px;padding:3px 10px;">📥 批量导入</button><input type="file" id="batch-import-input" accept=".json" style="display:none" onchange="handleBatchImport(event)"></div>';
 
       // Search bar
       html += '<div style="margin-bottom:10px;display:flex;gap:8px;">';
