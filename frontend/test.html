@@ -121,13 +121,20 @@
       selectedOption = -1;
       const list = document.getElementById('options-list');
       list.innerHTML = '';
-      q.options.forEach(function(opt, i) {
+      // Shuffle options so score order isn't visible
+      var indices = q.options.map(function(_, i) { return i; });
+      for (var si = indices.length - 1; si > 0; si--) {
+        var rj = Math.floor(Math.random() * (si + 1));
+        var tmp = indices[si]; indices[si] = indices[rj]; indices[rj] = tmp;
+      }
+      indices.forEach(function(origIdx) {
+        const opt = q.options[origIdx];
         const li = document.createElement('li');
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.innerHTML = escapeHtml(opt.text || '');
-        btn.onclick = function() { selectOption(i); };
-        btn.dataset.index = i;
+        btn.onclick = function() { selectOption(origIdx); };
+        btn.dataset.index = origIdx;
         li.appendChild(btn);
         list.appendChild(li);
       });
