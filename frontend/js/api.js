@@ -81,7 +81,10 @@ const api = {
   adminBackupExport() { return this.get('/api/admin/backup/export'); },
   adminBackupRestore(data) { return this.post('/api/admin/backup/restore', data); },
 
-  // Full migration (一键跑路)
+  // Auto-backup config
+  adminGetAutoBackupConfig() { return this.get('/api/admin/backup/auto-config'); },
+  adminSetAutoBackupConfig(intervalHours) { return this.post('/api/admin/backup/auto-config', { interval_hours: intervalHours }); },
+  adminTriggerAutoBackup() { return this.post('/api/admin/backup/trigger', {}); },
   adminFullExport() { return this.get('/api/admin/full-export'); },
   adminFullRestore(data) { return this.post('/api/admin/full-restore', data); },
 

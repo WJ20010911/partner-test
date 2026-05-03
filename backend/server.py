@@ -26,7 +26,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "partner_test.db")
 SECRET_KEY = os.environ.get("SECRET_KEY", "partner-test-secret-change-in-prod")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "123123")
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
-BACKUP_DIR = os.environ.get("BACKUP_DIR", "/Lupin/Partner_BackUp")
+BACKUP_DIR = os.environ.get("BACKUP_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "backups"))
 QUESTION_COUNT_PER_TEST = 12
 TOKEN_EXPIRY_HOURS = 72
 BAIDU_API_KEY = os.environ.get("BAIDU_API_KEY", "")
@@ -1710,6 +1710,9 @@ def do_auto_backup():
         )
         conn.commit()
         backup_count = conn.execute("SELECT COUNT(*) as c FROM full_backups").fetchone()["c"]
+        # Record last backup time for the dynamic interval loop
+        conn.execute("INSERT OR REPLACE INTO seed_version (key, value) VALUES ('auto_backup_last_time', ?)", (now,))
+        conn.commit()
         print(f"[{now}] 自动全量备份已存入数据库 (id={bid}) — 累计 {backup_count} 次")
     except Exception as e:
         print(f"[{now}] 自动备份 DB 写入失败: {e}")
@@ -1737,13 +1740,88 @@ def do_auto_backup():
         print(f"[{now}] 自动备份文件写入失败: {e}")
 
 
+_last_backup_time = None
+
 def _backup_loop():
-    """Background loop: run do_auto_backup() every 3600 seconds."""
+    """Background loop: read interval from config dynamically, run do_auto_backup() accordingly."""
+    global _last_backup_time
     # Small initial delay so server finishes startup before first backup
     time.sleep(10)
+    _last_backup_time = datetime.now(timezone.utc)
+
     while True:
-        do_auto_backup()
-        time.sleep(3600)
+        conn = get_db()
+        try:
+            row = conn.execute("SELECT value FROM seed_version WHERE key='auto_backup_interval'").fetchone()
+            interval = int(row["value"]) if row else 3600
+        except Exception:
+            interval = 3600
+        finally:
+            conn.close()
+
+        elapsed = (datetime.now(timezone.utc) - _last_backup_time).total_seconds()
+        if elapsed >= interval:
+            _last_backup_time = datetime.now(timezone.utc)
+            do_auto_backup()
+        else:
+            time.sleep(min(60, interval - elapsed))
+
+
+# ── Auto backup config (dynamic interval) ─────────────────
+
+def handle_get_auto_backup_config(headers):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT value FROM seed_version WHERE key='auto_backup_interval'").fetchone()
+        interval = int(row["value"]) if row else 3600
+        row = conn.execute("SELECT value FROM seed_version WHERE key='auto_backup_last_time'").fetchone()
+        last_backup_at = row["value"] if row else ""
+        return json_response({
+            "interval_seconds": interval,
+            "interval_hours": interval / 3600,
+            "last_backup_at": last_backup_at,
+        })
+    finally:
+        conn.close()
+
+
+def handle_set_auto_backup_config(headers, body):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    interval_hours = body.get("interval_hours", 1)
+    try:
+        interval_seconds = int(float(interval_hours) * 3600)
+        if interval_seconds < 300:
+            return error_response("间隔不能小于 5 分钟")
+        if interval_seconds > 86400:
+            return error_response("间隔不能超过 24 小时")
+    except (ValueError, TypeError):
+        return error_response("请输入有效数字")
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO seed_version (key, value) VALUES ('auto_backup_interval', ?)",
+            (str(interval_seconds),)
+        )
+        conn.commit()
+        print(f"[配置] 自动备份间隔已修改为 {interval_hours} 小时（{interval_seconds} 秒）")
+        return json_response({"status": "ok", "interval_seconds": interval_seconds})
+    finally:
+        conn.close()
+
+
+def handle_trigger_auto_backup(headers):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    global _last_backup_time
+    do_auto_backup()
+    _last_backup_time = datetime.now(timezone.utc)
+    return json_response({"status": "ok", "message": "已触发自动备份"})
 
 
 def handle_full_restore(headers, body):
@@ -1946,6 +2024,9 @@ route("GET", r"/api/questions/all")(lambda h, b, *a: handle_all_questions(h))
 route("POST", r"/api/admin/questions/delete")(lambda h, b, *a: handle_admin_delete_question(h, b))
 route("POST", r"/api/admin/questions/batch-delete")(lambda h, b, *a: handle_admin_batch_delete(h, b))
 route("POST", r"/api/admin/questions/batch-set-timelimit")(lambda h, b, *a: handle_admin_batch_set_timelimit(h, b))
+route("GET", r"/api/admin/backup/auto-config")(lambda h, b, *a: handle_get_auto_backup_config(h))
+route("POST", r"/api/admin/backup/auto-config")(lambda h, b, *a: handle_set_auto_backup_config(h, b))
+route("POST", r"/api/admin/backup/trigger")(lambda h, b, *a: handle_trigger_auto_backup(h))
 route("GET", r"/api/admin/backup/export")(lambda h, b, *a: handle_backup_export(h))
 route("POST", r"/api/admin/backup/restore")(lambda h, b, *a: handle_backup_restore(h, b))
 route("GET", r"/api/admin/full-export")(lambda h, b, *a: handle_full_export(h))

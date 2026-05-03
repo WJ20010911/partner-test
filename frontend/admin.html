@@ -842,7 +842,13 @@
       }
       html += '</div>';
 
+      // ── 自动全量备份配置 ──
+      html += '<hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">';
+      html += '<div class="section-title">⏰ 自动全量备份</div>';
+      html += '<div id="auto-backup-config" style="padding:8px 0;">加载中...</div>';
+
       container.innerHTML = html;
+      loadAutoBackupConfig();
     }
 
     async function exportBackup() {
@@ -888,7 +894,7 @@
     function escapeHtml(str) {
       var div = document.createElement('div');
       div.appendChild(document.createTextNode(str));
-      return div.innerHTML;
+      return div.innerHTML.replace(/"/g, '&quot;');
     }
 
     async function approve(id) {
@@ -917,7 +923,54 @@
       container.innerHTML = '<div class="flash flash-' + type + '">' + msg + '</div>';
       setTimeout(function() { if (container) container.innerHTML = ''; }, 3000);
     }
-  </script>
+  
+
+    async function loadAutoBackupConfig() {
+      try {
+        var cfg = await api.adminGetAutoBackupConfig();
+        var lastTime = cfg.last_backup_at ? cfg.last_backup_at.slice(0,19).replace('T', ' ') : '暂无';
+        var div = document.getElementById('auto-backup-config');
+        if (!div) return;
+        div.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">' +
+          '<span style="font-size:13px;color:var(--text-light);">当前间隔：</span>' +
+          '<input type="number" id="backup-interval-input" value="' + (cfg.interval_hours).toFixed(1) + '" min="0.1" max="24" step="0.5" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:14px;">' +
+          '<span style="font-size:13px;color:var(--text-light);">小时</span>' +
+          '<button class="btn btn-primary" onclick="saveAutoBackupInterval()" style="padding:6px 16px;">保存间隔</button>' +
+          '<button class="btn btn-outline" onclick="triggerAutoBackup()" style="padding:6px 16px;">⚡ 立即执行备份</button>' +
+          '</div>' +
+          '<p style="font-size:12px;color:var(--text-light);margin-top:8px;">上次备份：' + lastTime + ' &nbsp;|&nbsp; 间隔范围：0.1 ∼ 24 小时，修改后约 1 分钟生效</p>';
+      } catch (e) {
+        var div = document.getElementById('auto-backup-config');
+        if (div) div.innerHTML = '<p style="color:var(--text-light);font-size:13px;">加载配置失败: ' + e.message + '</p>';
+      }
+    }
+
+    async function saveAutoBackupInterval() {
+      var input = document.getElementById('backup-interval-input');
+      if (!input) return;
+      var val = parseFloat(input.value);
+      if (isNaN(val) || val < 0.1 || val > 24) {
+        showFlash('请输入 0.1 ~ 24 之间的有效数字', 'error');
+        return;
+      }
+      try {
+        await api.adminSetAutoBackupConfig(val);
+        showFlash('自动备份间隔已设置为 ' + val.toFixed(1) + ' 小时', 'success');
+      } catch (e) {
+        showFlash('设置失败: ' + e.message, 'error');
+      }
+    }
+
+    async function triggerAutoBackup() {
+      try {
+        var result = await api.adminTriggerAutoBackup();
+        showFlash(result.message || '自动备份已触发', 'success');
+        loadAutoBackupConfig();
+      } catch (e) {
+        showFlash('触发失败: ' + e.message, 'error');
+      }
+    }
+</script>
 
   <!-- Edit Question Modal -->
   <div id="edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;overflow-y:auto;" onclick="if(event.target===this)closeEditModal()">
