@@ -2442,22 +2442,27 @@ def main():
             print("SKIP_SEED 已设置，跳过自动 seed。")
         elif os.environ.get("FORCE_RESEED", "").lower() in ("1", "true", "yes"):
             from seed_questions import QUESTIONS_JSON
-            questions = json.loads(QUESTIONS_JSON)
+            seed_qs = json.loads(QUESTIONS_JSON)
             now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-            # Clear old data
-            conn.execute("DELETE FROM question_tags")
-            conn.execute("DELETE FROM tags")
-            conn.execute("DELETE FROM test_records")
-            conn.execute("DELETE FROM question_skips")
-            conn.execute("DELETE FROM questions")
-            conn.commit()
-            print("FORCE_RESEED：已清空旧数据。")
-            for q in questions:
-                qid = uuid.uuid4().hex[:8]
-                conn.execute(
-                    "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)",
-                    (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), 0, now)
-                )
+            # Map existing questions by content (content doesn't change)
+            existing_rows = conn.execute("SELECT id, content FROM questions").fetchall()
+            existing_by_content = {r["content"]: r["id"] for r in existing_rows}
+            updated = inserted = deleted = 0
+            # Update or insert each seed question in-place (preserve IDs)
+            for q in seed_qs:
+                content = q["content"]
+                options_json = json.dumps(q["options"], ensure_ascii=False)
+                weight = q.get("weight", 1.0)
+                if content in existing_by_content:
+                    qid = existing_by_content[content]
+                    conn.execute("UPDATE questions SET options=?, dimension=?, weight=?, time_limit=0 WHERE id=?", (options_json, q.get("dimension"), weight, qid))
+                    updated += 1
+                else:
+                    qid = uuid.uuid4().hex[:8]
+                    conn.execute("INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)", (qid, content, options_json, q.get("dimension"), weight, 0, now))
+                    inserted += 1
+                # Refresh tags
+                conn.execute("DELETE FROM question_tags WHERE question_id=?", (qid,))
                 for tag_name in q.get("tags", []):
                     tag_name = tag_name.strip()
                     if not tag_name:
@@ -2467,8 +2472,17 @@ def main():
                     if not existing_tag:
                         conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
                     conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
+            # Delete questions removed from seed data
+            seed_contents = {q["content"] for q in seed_qs}
+            for content, qid in existing_by_content.items():
+                if content not in seed_contents:
+                    conn.execute("DELETE FROM question_tags WHERE question_id=?", (qid,))
+                    conn.execute("DELETE FROM questions WHERE id=?", (qid,))
+                    deleted += 1
+            # Clean orphaned tags
+            conn.execute("DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM question_tags)")
             conn.commit()
-            print(f"FORCE_RESEED：已重新导入 {len(questions)} 道题。")
+            print(f"FORCE_RESEED：更新 {updated} 题，新增 {inserted} 题，删除 {deleted} 题（测试记录/跳过记录已保留）。")
         else:
             # Only seed if questions table is empty (fresh deploy)
             existing = conn.execute("SELECT COUNT(*) as c FROM questions").fetchone()
