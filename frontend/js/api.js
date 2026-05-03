@@ -85,7 +85,10 @@ const api = {
   adminGetAutoBackupConfig() { return this.get('/api/admin/backup/auto-config'); },
   adminSetAutoBackupConfig(intervalHours) { return this.post('/api/admin/backup/auto-config', { interval_hours: intervalHours }); },
   adminTriggerAutoBackup() { return this.post('/api/admin/backup/trigger', {}); },
-  adminFullExport() { return this.get('/api/admin/full-export'); },
+  adminDownloadLatestBackup() {
+    // Return the URL directly so the browser handles the download via anchor click
+    return '/api/admin/backup/download-latest';
+  },
   adminFullRestore(data) { return this.post('/api/admin/full-restore', data); },
 
   // Test

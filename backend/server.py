@@ -1824,6 +1824,29 @@ def handle_trigger_auto_backup(headers):
     return json_response({"status": "ok", "message": "已触发自动备份"})
 
 
+def handle_download_latest_backup(headers):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT snapshot, created_at FROM full_backups ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+        if not row:
+            return error_response("暂无备份记录", 404)
+        snapshot = json.loads(row["snapshot"])
+        created_at = row["created_at"]
+        filename = f"full-backup-{created_at[:19].replace(':', '-')}.json"
+        body = json.dumps(snapshot, ensure_ascii=False, indent=2)
+        return (200, body.encode("utf-8"),
+                f"application/json; charset=utf-8; filename={filename}")
+    except Exception as e:
+        return error_response(f"下载失败: {e}")
+    finally:
+        conn.close()
+
+
 def handle_full_restore(headers, body):
     user, err = require_admin(headers)
     if err:
@@ -2027,6 +2050,7 @@ route("POST", r"/api/admin/questions/batch-set-timelimit")(lambda h, b, *a: hand
 route("GET", r"/api/admin/backup/auto-config")(lambda h, b, *a: handle_get_auto_backup_config(h))
 route("POST", r"/api/admin/backup/auto-config")(lambda h, b, *a: handle_set_auto_backup_config(h, b))
 route("POST", r"/api/admin/backup/trigger")(lambda h, b, *a: handle_trigger_auto_backup(h))
+route("GET", r"/api/admin/backup/download-latest")(lambda h, b, *a: handle_download_latest_backup(h))
 route("GET", r"/api/admin/backup/export")(lambda h, b, *a: handle_backup_export(h))
 route("POST", r"/api/admin/backup/restore")(lambda h, b, *a: handle_backup_restore(h, b))
 route("GET", r"/api/admin/full-export")(lambda h, b, *a: handle_full_export(h))

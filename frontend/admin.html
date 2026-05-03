@@ -937,6 +937,7 @@
           '<span style="font-size:13px;color:var(--text-light);">小时</span>' +
           '<button class="btn btn-primary" onclick="saveAutoBackupInterval()" style="padding:6px 16px;">保存间隔</button>' +
           '<button class="btn btn-outline" onclick="triggerAutoBackup()" style="padding:6px 16px;">⚡ 立即执行备份</button>' +
+          '<button class="btn btn-outline" onclick="downloadLatestBackup()" style="padding:6px 16px;margin-left:4px;">⬇ 下载最新备份</button>' +
           '</div>' +
           '<p style="font-size:12px;color:var(--text-light);margin-top:8px;">上次备份：' + lastTime + ' &nbsp;|&nbsp; 间隔范围：0.1 ∼ 24 小时，修改后约 1 分钟生效</p>';
       } catch (e) {
@@ -970,6 +971,24 @@
         showFlash('触发失败: ' + e.message, 'error');
       }
     }
+
+
+    async function downloadLatestBackup() {
+      try {
+        var url = api.adminDownloadLatestBackup();
+        // Use a temporary anchor to trigger the download
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showFlash('正在下载最新备份...', 'success');
+      } catch (e) {
+        showFlash('下载失败: ' + e.message, 'error');
+      }
+    }
+
 </script>
 
   <!-- Edit Question Modal -->
