@@ -27,7 +27,7 @@
 
 直接访问已部署的站点即可开始测试。无需注册，匿名答题。
 
-https://partner-test.up.railway.app/index.html
+(https://www.partner-text.com/)
 
 ### 本地部署
 
