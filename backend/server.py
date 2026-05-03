@@ -2440,6 +2440,35 @@ def main():
         # 环境变量跳过 seed（用于 Railway 上已手动编辑题库的情况）
         if os.environ.get("SKIP_SEED", "").lower() in ("1", "true", "yes"):
             print("SKIP_SEED 已设置，跳过自动 seed。")
+        elif os.environ.get("FORCE_RESEED", "").lower() in ("1", "true", "yes"):
+            from seed_questions import QUESTIONS_JSON
+            questions = json.loads(QUESTIONS_JSON)
+            now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            # Clear old data
+            conn.execute("DELETE FROM question_tags")
+            conn.execute("DELETE FROM tags")
+            conn.execute("DELETE FROM test_records")
+            conn.execute("DELETE FROM question_skips")
+            conn.execute("DELETE FROM questions")
+            conn.commit()
+            print("FORCE_RESEED：已清空旧数据。")
+            for q in questions:
+                qid = uuid.uuid4().hex[:8]
+                conn.execute(
+                    "INSERT INTO questions (id, content, options, dimension, weight, time_limit, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, 'approved', 'test_uploader', ?)",
+                    (qid, q["content"], json.dumps(q["options"], ensure_ascii=False), q.get("dimension"), q.get("weight", 1.0), 0, now)
+                )
+                for tag_name in q.get("tags", []):
+                    tag_name = tag_name.strip()
+                    if not tag_name:
+                        continue
+                    existing_tag = conn.execute("SELECT id FROM tags WHERE name = ?", (tag_name,)).fetchone()
+                    tid = existing_tag["id"] if existing_tag else uuid.uuid4().hex[:8]
+                    if not existing_tag:
+                        conn.execute("INSERT INTO tags (id, name) VALUES (?, ?)", (tid, tag_name))
+                    conn.execute("INSERT OR IGNORE INTO question_tags (question_id, tag_id) VALUES (?, ?)", (qid, tid))
+            conn.commit()
+            print(f"FORCE_RESEED：已重新导入 {len(questions)} 道题。")
         else:
             # Only seed if questions table is empty (fresh deploy)
             existing = conn.execute("SELECT COUNT(*) as c FROM questions").fetchone()
