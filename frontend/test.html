@@ -185,8 +185,8 @@
 
     function selectOption(idx) {
       selectedOption = idx;
-      document.querySelectorAll('.option-btn').forEach(function(btn, i) {
-        btn.classList.toggle('selected', i === idx);
+      document.querySelectorAll('.option-btn').forEach(function(btn) {
+        btn.classList.toggle('selected', parseInt(btn.dataset.index) === idx);
       });
       document.getElementById('next-btn').disabled = false;
     }
