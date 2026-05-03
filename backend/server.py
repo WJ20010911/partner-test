@@ -431,7 +431,27 @@ class _PgConnection:
     def execute(self, sql, params=None):
         cur = self._conn.cursor(cursor_factory=self._pg.extras.RealDictCursor)
         pg_sql = sql
+
+        # Handle INSERT OR REPLACE → INSERT ... ON CONFLICT DO UPDATE
+        had_replace = "INSERT OR REPLACE INTO" in pg_sql
         had_ignore = "OR IGNORE" in pg_sql
+
+        if had_replace:
+            m = re.match(r"INSERT OR REPLACE INTO\s+\w+\s+\(([^)]+)\)", pg_sql)
+            if m:
+                cols = [c.strip() for c in m.group(1).split(",")]
+                pk = cols[0]
+                update_cols = [f"{c} = EXCLUDED.{c}" for c in cols[1:]]
+                pg_sql = pg_sql.replace("INSERT OR REPLACE INTO", "INSERT INTO")
+                pg_sql = pg_sql.replace("?", "%s")
+                if update_cols:
+                    pg_sql += f" ON CONFLICT ({pk}) DO UPDATE SET " + ", ".join(update_cols)
+                if params:
+                    cur.execute(pg_sql, params)
+                else:
+                    cur.execute(pg_sql)
+                return _PgCursor(cur)
+
         pg_sql = pg_sql.replace("INSERT OR IGNORE INTO", "INSERT INTO")
         pg_sql = pg_sql.replace("?", "%s")
         if had_ignore:
@@ -1694,7 +1714,7 @@ def handle_full_export(headers):
 
 
 def do_auto_backup():
-    """Generate a full backup, save to DB and local file. Runs in background thread."""
+    """Generate a full backup, save to DB and local file. Returns (ok: bool, detail: str)."""
     bid = uuid.uuid4().hex[:8]
     now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -1715,8 +1735,9 @@ def do_auto_backup():
         conn.commit()
         print(f"[{now}] 自动全量备份已存入数据库 (id={bid}) — 累计 {backup_count} 次")
     except Exception as e:
-        print(f"[{now}] 自动备份 DB 写入失败: {e}")
-        return
+        err_msg = f"自动备份 DB 写入失败: {e}"
+        print(f"[{now}] {err_msg}")
+        return False, err_msg
     finally:
         conn.close()
 
@@ -1737,7 +1758,10 @@ def do_auto_backup():
             os.remove(oldest)
             print(f"[{now}] 删除旧备份: {oldest}")
     except Exception as e:
-        print(f"[{now}] 自动备份文件写入失败: {e}")
+        # File write failure is non-fatal (DB already succeeded)
+        print(f"[{now}] 自动备份文件写入失败 (DB 已存): {e}")
+
+    return True, f"备份完成 (id={bid}, 累计 {backup_count} 次)"
 
 
 _last_backup_time = None
@@ -1762,7 +1786,9 @@ def _backup_loop():
         elapsed = (datetime.now(timezone.utc) - _last_backup_time).total_seconds()
         if elapsed >= interval:
             _last_backup_time = datetime.now(timezone.utc)
-            do_auto_backup()
+            ok, detail = do_auto_backup()
+            if not ok:
+                print(f"[_backup_loop] {detail}")
         else:
             time.sleep(min(60, interval - elapsed))
 
@@ -1819,9 +1845,12 @@ def handle_trigger_auto_backup(headers):
     if err:
         return err
     global _last_backup_time
-    do_auto_backup()
+    ok, detail = do_auto_backup()
     _last_backup_time = datetime.now(timezone.utc)
-    return json_response({"status": "ok", "message": "已触发自动备份"})
+    if ok:
+        return json_response({"status": "ok", "message": detail})
+    else:
+        return error_response(detail)
 
 
 def handle_download_latest_backup(headers):
