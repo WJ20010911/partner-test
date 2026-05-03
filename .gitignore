@@ -16,6 +16,10 @@ build/
 .venv/
 venv/
 
+# Temp scripts
+_add_tags.py
+user_tags.json
+
 # IDE
 .idea/
 .vscode/
