@@ -421,33 +421,6 @@
         html += '<div class="verify-code">验真码：' + escapeHtml(result.verifyCode) + '</div>';
       }
 
-      // Debug: 每道题原始分数明细
-      if (result.debug && result.debug.length) {
-        html += '<div style="margin-top:16px;padding:12px;background:#f8f8f8;border-radius:8px;font-size:12px;">';
-        html += '<div style="font-weight:600;color:#2d2d2d;margin-bottom:8px;">🔍 调试信息 — 每道题原始分</div>';
-        html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-        html += '<thead><tr style="background:#eee;">';
-        html += '<th style="padding:4px 6px;text-align:left;">#</th>';
-        html += '<th style="padding:4px 6px;text-align:left;">维度</th>';
-        html += '<th style="padding:4px 6px;text-align:right;">原始分</th>';
-        html += '<th style="padding:4px 6px;text-align:right;">权重</th>';
-        html += '<th style="padding:4px 6px;text-align:right;">贡献</th>';
-        html += '<th style="padding:4px 6px;text-align:right;">用时</th>';
-        html += '</tr></thead><tbody>';
-        result.debug.forEach(function(d) {
-          html += '<tr style="border-top:1px solid #e0e0e0;">';
-          html += '<td style="padding:4px 6px;">' + (d.index + 1) + '</td>';
-          html += '<td style="padding:4px 6px;">' + (d.dimension || '-') + '</td>';
-          html += '<td style="padding:4px 6px;text-align:right;">' + d.rawScore + '</td>';
-          html += '<td style="padding:4px 6px;text-align:right;">×' + d.weight + '</td>';
-          html += '<td style="padding:4px 6px;text-align:right;font-weight:600;' + (d.contribution > 0 ? 'color:#c62828;' : '') + '">' + d.contribution.toFixed(1) + '</td>';
-          html += '<td style="padding:4px 6px;text-align:right;">' + d.timeTaken.toFixed(1) + 's</td>';
-          html += '</tr>';
-        });
-        html += '</tbody></table>';
-        html += '</div>';
-      }
-
       document.getElementById('result-content').innerHTML = html;
     }
 

@@ -106,6 +106,7 @@
     <div class="card">
       <div class="tab-bar">
         <button class="active" id="tab-overview" onclick="switchTab('overview')">概览</button>
+        <button id="tab-pro" onclick="switchTab('pro')" style="color:#000;font-weight:700;">Pro</button>
         <button id="tab-pending" onclick="switchTab('pending')">待审核<span id="pending-badge" class="pending-badge"></span></button>
         <button id="tab-all" onclick="switchTab('all')">全部题库</button>
         <button id="tab-complaints" onclick="switchTab('complaints')">投诉</button>
@@ -173,6 +174,7 @@
       var container = document.getElementById('admin-content');
       container.innerHTML = '<div class="spinner"></div>';
       if (tab === 'overview') loadOverview();
+      else if (tab === 'pro') loadProRecords();
       else if (tab === 'pending') {
         loadPending();
         // Mark all pending as seen
@@ -240,43 +242,77 @@
         html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + qs.total + '</div><div class="label">总计</div></div>';
         html += '</div>';
 
-        // ─── Pro 数据概览 ───
-        html += '<div class="section-title" style="color:#2d2d2d;">Pro 深度算法测试数据</div>';
-        html += '<div id="pro-stats-area" style="text-align:center;padding:10px 0;"><span style="color:var(--text-light);font-size:13px;">加载中...</span></div>';
-
         container.innerHTML = html;
-
-        // 异步加载 Pro 数据
-        loadProStats().then(function(proHtml) {
-          document.getElementById('pro-stats-area').innerHTML = proHtml;
-        }).catch(function() {
-          document.getElementById('pro-stats-area').innerHTML = '<span style="color:var(--text-light);font-size:13px;">Pro 服务暂未连接</span>';
-        });
 
       } catch (e) {
         container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
       }
     }
 
-    async function loadProStats() {
+    async function loadProRecords() {
       const PRO_API = 'https://partner-text-pro-production.up.railway.app';
-      const r = await fetch(PRO_API + '/api/match/stats');
-      const data = await r.json();
+      var container = document.getElementById('admin-content');
+      try {
+        var r = await fetch(PRO_API + '/api/match/records');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var data = await r.json();
+        var records = data.records || [];
 
-      const totalQ = data.total_questions || 0;
-      const totalT = data.total_tests || 0;
+        var html = '<div class="section-title" style="color:#000;">Pro 深度算法测试</div>';
+        html += '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">';
+        html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + (data.total_tests || 0) + '</div><div class="label">测试总人次</div></div>';
+        html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + (data.total_questions || 0) + '</div><div class="label">Pro 题库数量</div></div>';
+        html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;font-size:24px;">' + (data.api_status || 'running') + '</div><div class="label">连接状态</div></div>';
+        html += '</div>';
 
-      return '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">' +
-        '<div class="stat-card" style="border-color:#2d2d2d;">' +
-          '<div class="num" style="color:#2d2d2d;">' + totalT + '</div>' +
-          '<div class="label">Pro 测试总人次</div></div>' +
-        '<div class="stat-card" style="border-color:#2d2d2d;">' +
-          '<div class="num" style="color:#2d2d2d;">' + totalQ + '</div>' +
-          '<div class="label">Pro 题库总量</div></div>' +
-        '<div class="stat-card" style="border-color:#2d2d2d;">' +
-          '<div class="num" style="color:#2d2d2d;">' + (data.api_status || 'running') + '</div>' +
-          '<div class="label">Pro 服务状态</div></div>' +
-      '</div>';
+        if (!records.length) {
+          html += '<p style="color:var(--text-light);text-align:center;margin-top:20px;">暂无 Pro 测试记录</p>';
+          container.innerHTML = html;
+          return;
+        }
+
+        html += '<div class="section-title" style="color:#000;">测试记录</div>';
+        records.forEach(function(rec) {
+          var details = rec.answerDetails || [];
+          html += '<div class="card" style="border-color:#000;margin-bottom:14px;">';
+          html += '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
+          html += '<strong style="color:#000;">#' + rec.id + ' · ' + escapeHtml(rec.verifyCode || '-') + '</strong>';
+          html += '<span style="color:var(--text-light);font-size:13px;">' + (rec.createdAt || '').slice(0,19).replace('T', ' ') + '</span>';
+          html += '</div>';
+          html += '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">';
+          html += renderProMiniStat('常识', rec.scoreCommonSense);
+          html += renderProMiniStat('共情', rec.scoreEmpathy);
+          html += renderProMiniStat('摩擦', rec.scoreFriction);
+          html += renderProMiniStat('现实', rec.scoreReality);
+          html += renderProMiniStat('异常', rec.penaltyScore);
+          html += renderProMiniStat('测谎', rec.isFlagged ? '异常' : '正常');
+          html += '</div>';
+          html += '<details><summary style="cursor:pointer;color:#000;font-weight:600;">查看分数细节（' + details.length + ' 题）</summary>';
+          html += '<table class="admin-table" style="margin-top:10px;"><thead><tr><th>#</th><th>维度</th><th>原始分</th><th>权重</th><th>贡献</th><th>用时</th><th>题目</th><th>选择</th></tr></thead><tbody>';
+          details.forEach(function(d) {
+            html += '<tr>';
+            html += '<td>' + ((d.index || 0) + 1) + '</td>';
+            html += '<td>' + escapeHtml(d.dimension || '-') + '</td>';
+            html += '<td>' + (d.rawScore != null ? d.rawScore : '-') + '</td>';
+            html += '<td>×' + (d.weight != null ? d.weight : '-') + '</td>';
+            html += '<td style="font-weight:600;color:#000;">' + (d.contribution != null ? Number(d.contribution).toFixed(1) : '-') + '</td>';
+            html += '<td>' + (d.timeTaken != null ? Number(d.timeTaken).toFixed(1) + 's' : '-') + '</td>';
+            html += '<td style="max-width:220px;word-break:break-all;">' + escapeHtml(d.questionContent || '-') + '</td>';
+            html += '<td style="max-width:180px;word-break:break-all;">' + escapeHtml(d.selectedText || '-') + '</td>';
+            html += '</tr>';
+          });
+          html += '</tbody></table></details>';
+          html += '</div>';
+        });
+
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="color:#721c24;text-align:center;">Pro 后端连接失败: ' + escapeHtml(e.message) + '</p>';
+      }
+    }
+
+    function renderProMiniStat(label, value) {
+      return '<div class="stat-card" style="padding:10px;border-color:#000;"><div class="num" style="font-size:20px;color:#000;">' + escapeHtml(String(value ?? '-')) + '</div><div class="label">' + label + '</div></div>';
     }
 
     // ─── Pending Questions ───
