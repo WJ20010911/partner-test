@@ -5,40 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>你适合什么样的伴侣？</title>
   <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-  <!-- Pro 深度测试入口（悬浮右上角） -->
-  <div id="pro-test-entry">
-    <button onclick="window.location.href='/test.html'">Pro 深度算法测试</button>
-  </div>
   <style>
-    #pro-test-entry {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
+    .nav-pro-btn {
+      background: #2d2d2d !important;
+      color: #fff !important;
+      padding: 5px 14px !important;
+      border-radius: 4px !important;
+      font-weight: 600 !important;
+      font-size: 0.85em !important;
     }
-    #pro-test-entry button {
-      background: #2d2d2d;
-      color: #fff;
-      border: 1px solid #555;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s, box-shadow 0.2s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      letter-spacing: 0.5px;
-    }
-    #pro-test-entry button:hover {
-      background: #444;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    .nav-pro-btn:hover {
+      background: #444 !important;
     }
   </style>
+</head>
+<body>
   <nav class="nav">
   <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
   <div class="nav-links">
+    <a href="/test.html" class="nav-pro-btn">Pro 深度算法测试</a>
     <a href="/index.html">首页</a>
     <a href="/login.html">上传题库</a>
     <a href="javascript:void(0)" onclick="showContributors()" style="cursor:pointer;">致谢</a>
