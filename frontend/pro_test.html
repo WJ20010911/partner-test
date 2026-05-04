@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pro 深度算法测试 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .nav-pro-btn {
+      background: #2d2d2d !important;
+      color: #fff !important;
+      padding: 5px 14px !important;
+      border-radius: 4px !important;
+      font-weight: 600 !important;
+      font-size: 0.85em !important;
+    }
+    .pro-badge {
+      display: inline-block;
+      background: #2d2d2d;
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 0.75em;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .result-radar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .radar-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .radar-item .label {
+      font-size: 0.85em;
+      color: var(--text-light);
+      margin-bottom: 6px;
+    }
+    .radar-item .score {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: #2d2d2d;
+    }
+    .radar-item .bar-bg {
+      height: 6px;
+      background: #eee;
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .radar-item .bar-fill {
+      height: 100%;
+      background: #2d2d2d;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+    .result-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .result-meta .meta-item {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 10px 18px;
+      text-align: center;
+      font-size: 0.9em;
+    }
+    .result-meta .meta-item .val {
+      font-weight: 600;
+      color: #2d2d2d;
+    }
+    .result-meta .meta-item .lbl {
+      color: var(--text-light);
+      font-size: 0.85em;
+    }
+    .verify-code {
+      text-align: center;
+      font-size: 0.85em;
+      color: var(--text-light);
+      margin-top: 12px;
+      word-break: break-all;
+    }
+    .warning-box {
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      font-size: 0.9em;
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/index.html">首页</a>
+      <a href="/login.html">上传题库</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Ready Screen -->
+    <div id="start-screen" class="card" style="text-align:center;">
+      <h2 style="color:var(--primary-dark);margin-bottom:16px;">
+        准备好了吗？
+        <span class="pro-badge">PRO</span>
+      </h2>
+      <p style="color:var(--text-light);margin-bottom:16px;">
+        这是一次基于多维雷达图算法的<strong style="color:#2d2d2d;">深度行为分析测试</strong>。<br>
+        题目与普通版不同，算法更复杂，结果更精准。
+      </p>
+      <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
+        <strong>📖 操作说明</strong><br>
+        · <strong>跳过</strong> — 这道题不适合你，换一道类似的题继续。<br>
+        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br>
+        · <strong>延长 5 秒</strong> — 倒计时快结束时可使用，每道题最多加 3 次。<br><br>
+        ⚠ 注意：此模式使用独立题库和独立评分算法，结果不与普通版互通。
+      </div>
+      <button class="btn btn-primary" onclick="startProTest()">开始 Pro 深度测试</button>
+    </div>
+
+    <!-- Test Screen -->
+    <div id="test-screen" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="color:var(--text-light);font-size:0.9em;">第 <span id="q-num">1</span> / <span id="q-total">12</span> 题</span>
+          <span style="color:var(--text-light);font-size:0.9em;" id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;"></div></div>
+        <div id="timer-bar-wrapper" style="height:4px;background:#eee;border-radius:2px;margin-bottom:8px;overflow:hidden;display:none;">
+          <div id="timer-bar" style="height:100%;background:#e88d9e;width:100%;transition:width 1s linear;"></div>
+        </div>
+        <h3 id="q-content" style="font-size:1.2em;margin-bottom:20px;min-height:60px;"></h3>
+        <ul class="options-list" id="options-list"></ul>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-sm btn-outline" id="skip-btn" onclick="skipQuestion(false)" style="flex:1;font-size:0.85em;">跳过</button>
+          <button class="btn btn-sm btn-outline" id="extend-btn" onclick="extendTime()" style="flex:1;font-size:0.85em;border-color:#ffa726;color:#ffa726;" disabled>延长 5 秒<span id="extend-count"> (0/3)</span></button>
+          <button class="btn btn-sm btn-outline" id="complain-btn" onclick="skipQuestion(true)" style="flex:1;font-size:0.85em;border-color:#e88d9e;color:#e88d9e;">投诉并跳过</button>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-block" id="next-btn" onclick="nextQuestion()" disabled>下一步</button>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="hidden">
+      <div class="spinner"></div>
+      <p style="text-align:center;color:var(--text-light);">正在分析你的答案...</p>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="hidden">
+      <div class="card">
+        <h2 style="color:var(--primary-dark);margin-bottom:8px;">Pro 深度评估结果</h2>
+        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:16px;">基于多维雷达图算法分析</p>
+        <div id="result-content"></div>
+      </div>
+      <div style="text-align:center;margin-top:16px;">
+        <a href="/index.html" class="btn btn-outline">返回首页</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>伴侣匹配测试 &copy; 2026 · Pro 深度算法测试</p>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    const PRO_API_BASE = 'https://partner-text-pro-production.up.railway.app';
+
+    let proQuestions = [];
+    let currentIdx = 0;
+    let answers = [];
+    let selectedOption = -1;
+    let timerInterval = null;
+    let extendCount = 0;
+    let timerRemaining = 0;
+    let timerLimit = 0;
+    const MAX_EXTENDS = 3;
+    let questionStartTime = 0;
+
+    async function startProTest() {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('test-screen').classList.remove('hidden');
+
+      try {
+        const r = await fetch(PRO_API_BASE + '/api/match/questions?count=12');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const qs = await r.json();
+        if (!Array.isArray(qs) || qs.length === 0) throw new Error('题库为空');
+
+        proQuestions = qs;
+        document.getElementById('q-total').textContent = qs.length;
+        renderQuestion();
+      } catch (e) {
+        alert('加载题目失败: ' + e.message + '\n\n请确认 Pro 后端服务已部署并运行。');
+        document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('test-screen').classList.add('hidden');
+      }
+    }
+
+    function clearTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      document.getElementById('timer-bar-wrapper').style.display = 'none';
+    }
+
+    function handleTimeout() {
+      clearTimer();
+      answers.push({ questionId: proQuestions[currentIdx].id, selectedIndex: -1, timeTakenSeconds: timerLimit });
+      currentIdx++;
+      if (currentIdx >= proQuestions.length) {
+        submitProAnswers();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    function renderQuestion() {
+      clearTimer();
+      const q = proQuestions[currentIdx];
+      document.getElementById('q-num').textContent = currentIdx + 1;
+      document.getElementById('q-content').textContent = q.content;
+      const pct = (currentIdx / proQuestions.length * 100).toFixed(0);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent = pct + '%';
+
+      selectedOption = -1;
+      questionStartTime = Date.now();
+
+      const list = document.getElementById('options-list');
+      list.innerHTML = '';
+
+      q.options.forEach(function(opt, origIdx) {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt.text || '';
+        btn.onclick = function() { selectOption(origIdx); };
+        btn.dataset.index = origIdx;
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+
+      document.getElementById('next-btn').disabled = true;
+
+      // Timer
+      extendCount = 0;
+      if (q.time_limit && q.time_limit > 0) {
+        timerRemaining = q.time_limit;
+        timerLimit = q.time_limit;
+        const wrapper = document.getElementById('timer-bar-wrapper');
+        const bar = document.getElementById('timer-bar');
+        wrapper.style.display = 'block';
+        bar.style.width = '100%';
+        bar.style.transition = 'none';
+
+        const extBtn = document.getElementById('extend-btn');
+        extBtn.disabled = true;
+        extBtn.style.opacity = '0.5';
+        document.getElementById('extend-count').textContent = '0/3';
+
+        bar.offsetHeight;
+        bar.style.transition = 'width 1s linear';
+
+        timerInterval = setInterval(function() {
+          timerRemaining--;
+          const eBtn = document.getElementById('extend-btn');
+          const eCnt = document.getElementById('extend-count');
+          if (timerRemaining <= 5 && extendCount < MAX_EXTENDS) {
+            eBtn.disabled = false;
+            eBtn.style.opacity = '1';
+          } else {
+            eBtn.disabled = true;
+            eBtn.style.opacity = '0.5';
+          }
+          eCnt.textContent = extendCount + '/3';
+          const pct2 = (timerRemaining / timerLimit) * 100;
+          bar.style.width = Math.max(0, pct2) + '%';
+          if (timerRemaining <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            handleTimeout();
+          }
+        }, 1000);
+      }
+    }
+
+    function selectOption(idx) {
+      selectedOption = idx;
+      document.querySelectorAll('.option-btn').forEach(function(btn) {
+        btn.classList.toggle('selected', parseInt(btn.dataset.index) === idx);
+      });
+      document.getElementById('next-btn').disabled = false;
+    }
+
+    function extendTime() {
+      if (extendCount >= MAX_EXTENDS || timerRemaining <= 0) return;
+      extendCount++;
+      timerRemaining += 5;
+      const eBtn = document.getElementById('extend-btn');
+      eBtn.disabled = true;
+      eBtn.style.opacity = '0.5';
+      document.getElementById('extend-count').textContent = extendCount + '/3';
+    }
+
+    function skipQuestion(isComplaint) {
+      clearTimer();
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      // No replacement endpoint in Pro API, just record answer and advance
+      answers.push({
+        questionId: proQuestions[currentIdx].id,
+        selectedIndex: -2, // -2 indicates skipped
+        timeTakenSeconds: timeTaken
+      });
+      currentIdx++;
+      if (currentIdx >= proQuestions.length) {
+        submitProAnswers();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    function nextQuestion() {
+      if (selectedOption < 0) return;
+      clearTimer();
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      answers.push({
+        questionId: proQuestions[currentIdx].id,
+        selectedIndex: selectedOption,
+        timeTakenSeconds: timeTaken
+      });
+      currentIdx++;
+      if (currentIdx >= proQuestions.length) {
+        submitProAnswers();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    async function submitProAnswers() {
+      document.getElementById('test-screen').classList.add('hidden');
+      document.getElementById('loading-screen').classList.remove('hidden');
+
+      try {
+        const r = await fetch(PRO_API_BASE + '/api/match/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: answers })
+        });
+        if (!r.ok) {
+          const errText = await r.text();
+          throw new Error(errText || 'HTTP ' + r.status);
+        }
+        const result = await r.json();
+        document.getElementById('loading-screen').classList.add('hidden');
+        renderProResult(result);
+      } catch (e) {
+        alert('提交失败: ' + e.message);
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('test-screen').classList.remove('hidden');
+      }
+    }
+
+    function renderProResult(result) {
+      document.getElementById('result-screen').classList.remove('hidden');
+
+      let html = '';
+
+      // Warning
+      if (result.warning && result.warning !== '正常') {
+        html += '<div class="warning-box">⚠ ' + escapeHtml(result.warning) + '</div>';
+      }
+
+      // Radar scores
+      const scores = result.radarScores || {};
+      const scoreLabels = {
+        commonSense: '常识与思维弹性',
+        empathy: '人性底线与共情基准',
+        friction: '日常摩擦中的本能反应',
+        reality: '关系现实感'
+      };
+
+      html += '<div class="result-radar">';
+      Object.keys(scoreLabels).forEach(function(key) {
+        const val = scores[key] != null ? scores[key] : 0;
+        const pct3 = Math.min(val / 5 * 100, 100);
+        html += '<div class="radar-item">';
+        html += '<div class="label">' + scoreLabels[key] + '</div>';
+        html += '<div class="score">' + val.toFixed(1) + '</div>';
+        html += '<div class="bar-bg"><div class="bar-fill" style="width:' + pct3 + '%;"></div></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      // Meta
+      html += '<div class="result-meta">';
+      html += '<div class="meta-item"><div class="val">' + (result.totalPenalty != null ? result.totalPenalty.toFixed(1) : '0.0') + '</div><div class="lbl">异常扣分</div></div>';
+      html += '<div class="meta-item"><div class="val">' + (result.fellIntoRoiTrap ? '是' : '否') + '</div><div class="lbl">触发测谎</div></div>';
+      html += '<div class="meta-item"><div class="val">' + proQuestions.length + '</div><div class="lbl">答题数</div></div>';
+      html += '</div>';
+
+      // Verify code
+      if (result.verifyCode) {
+        html += '<div class="verify-code">验真码：' + escapeHtml(result.verifyCode) + '</div>';
+      }
+
+      document.getElementById('result-content').innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML.replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

@@ -240,10 +240,43 @@
         html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + qs.total + '</div><div class="label">总计</div></div>';
         html += '</div>';
 
+        // ─── Pro 数据概览 ───
+        html += '<div class="section-title" style="color:#2d2d2d;">Pro 深度算法测试数据</div>';
+        html += '<div id="pro-stats-area" style="text-align:center;padding:10px 0;"><span style="color:var(--text-light);font-size:13px;">加载中...</span></div>';
+
         container.innerHTML = html;
+
+        // 异步加载 Pro 数据
+        loadProStats().then(function(proHtml) {
+          document.getElementById('pro-stats-area').innerHTML = proHtml;
+        }).catch(function() {
+          document.getElementById('pro-stats-area').innerHTML = '<span style="color:var(--text-light);font-size:13px;">Pro 服务暂未连接</span>';
+        });
+
       } catch (e) {
         container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
       }
+    }
+
+    async function loadProStats() {
+      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+      const r = await fetch(PRO_API + '/api/match/stats');
+      const data = await r.json();
+
+      const totalQ = data.total_questions || 0;
+      const totalT = data.total_tests || 0;
+
+      return '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">' +
+        '<div class="stat-card" style="border-color:#2d2d2d;">' +
+          '<div class="num" style="color:#2d2d2d;">' + totalT + '</div>' +
+          '<div class="label">Pro 测试总人次</div></div>' +
+        '<div class="stat-card" style="border-color:#2d2d2d;">' +
+          '<div class="num" style="color:#2d2d2d;">' + totalQ + '</div>' +
+          '<div class="label">Pro 题库总量</div></div>' +
+        '<div class="stat-card" style="border-color:#2d2d2d;">' +
+          '<div class="num" style="color:#2d2d2d;">' + (data.api_status || 'running') + '</div>' +
+          '<div class="label">Pro 服务状态</div></div>' +
+      '</div>';
     }
 
     // ─── Pending Questions ───
