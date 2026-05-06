@@ -524,10 +524,12 @@
     async function uploadProQuestionsJson(questions, path) {
       const PRO_API = 'https://partner-text-pro-production.up.railway.app';
       try {
+        var blob = new Blob([JSON.stringify({ questions: questions })], { type: 'application/json' });
+        var fd = new FormData();
+        fd.append('file', blob, 'questions.json');
         var r = await fetch(PRO_API + path, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questions: questions })
+          body: fd
         });
         if (!r.ok) {
           var errText = await r.text().catch(function() { return ''; });
