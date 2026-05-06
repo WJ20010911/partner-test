@@ -527,7 +527,7 @@
         var r = await fetch(PRO_API + path, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(questions)
+          body: JSON.stringify({ questions: questions })
         });
         if (!r.ok) {
           var errText = await r.text().catch(function() { return ''; });
