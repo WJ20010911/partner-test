@@ -553,13 +553,15 @@
       if (selected.length === 0) { showFlash('请先勾选要删除的题目', 'error'); return; }
       if (!confirm('确定要删除选中的 ' + selected.length + ' 道 Pro 题吗？此操作不可撤销。')) return;
       var remaining = (window.proQuestionCache || []).filter(function(q) { return selected.indexOf(q.id) === -1; });
+      // Always update local cache immediately
+      window.proQuestionCache = remaining;
+      filterProQuestions();
+      // Best-effort sync with Railway
       try {
-        var res = await uploadProQuestionsJson(remaining, '/api/match/questions/replace');
-        window.proQuestionCache = remaining;
+        await uploadProQuestionsJson(remaining, '/api/match/questions/replace');
         showFlash('已删除 ' + selected.length + ' 题，剩余 ' + remaining.length + ' 题', 'success');
-        filterProQuestions();
       } catch (e) {
-        showFlash('批量删除失败: ' + e.message, 'error');
+        showFlash('本地已删除，但同步到 Railway 失败: ' + e.message, 'error');
       }
     }
 
