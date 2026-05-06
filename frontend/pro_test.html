@@ -389,6 +389,23 @@
       document.getElementById('test-screen').classList.add('hidden');
       document.getElementById('loading-screen').classList.remove('hidden');
 
+      // Submit to local server first (always works)
+      var localToken = null;
+      try {
+        const localR = await fetch('/api/test/pro-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: answers, total_penalty: 0 })
+        });
+        if (localR.ok) {
+          const localResult = await localR.json();
+          localToken = localResult.real_token;
+        }
+      } catch(e) {}
+
+      // Then try external API for radar scores
+      var externalResult = null;
+      var externalError = null;
       try {
         const r = await fetch(PRO_API_BASE + '/api/match/submit', {
           method: 'POST',
@@ -399,70 +416,93 @@
           const errText = await r.text();
           throw new Error(errText || 'HTTP ' + r.status);
         }
-        const result = await r.json();
-        // Also submit to local server for verification code
-        try {
-          const localR = await fetch('/api/test/pro-submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ answers: answers, total_penalty: result.totalPenalty || 0 })
-          });
-          if (localR.ok) {
-            const localResult = await localR.json();
-            result.localToken = localResult.real_token;
-          }
-        } catch(e) {}
-        document.getElementById('loading-screen').classList.add('hidden');
-        renderProResult(result);
+        externalResult = await r.json();
+
+        // If external succeeded, update local record with real total_penalty
+        if (externalResult.totalPenalty != null && localToken) {
+          try {
+            await fetch('/api/test/pro-submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ answers: answers, total_penalty: externalResult.totalPenalty })
+            });
+          } catch(e) {}
+        }
       } catch (e) {
-        alert('提交失败: ' + e.message);
-        document.getElementById('loading-screen').classList.add('hidden');
-        document.getElementById('test-screen').classList.remove('hidden');
+        externalError = e.message;
+      }
+
+      document.getElementById('loading-screen').classList.add('hidden');
+
+      // Build result object with whatever we got
+      var result = externalResult || {};
+      if (localToken) {
+        result.localToken = localToken;
+      }
+
+      if (externalResult) {
+        renderProResult(result);
+      } else {
+        // External failed — show whatever we have
+        result.radarScores = {};
+        result.totalPenalty = 0;
+        renderProResult(result, externalError);
       }
     }
 
-    function renderProResult(result) {
+    function renderProResult(result, externalError) {
       document.getElementById('result-screen').classList.remove('hidden');
 
       let html = '';
+
+      // External API error banner
+      if (externalError) {
+        html += '<div class="warning-box" style="background:#fff3cd;border-color:#ffeeba;color:#856404;margin-bottom:12px;">';
+        html += '<strong>⚠ 外部评分服务暂不可用</strong><br>';
+        html += '<span style="font-size:0.9em;">雷达评分无法加载（' + escapeHtml(externalError) + '）。你的答题记录已保存，可使用本地验真码验证。</span>';
+        html += '</div>';
+      }
 
       // Warning
       if (result.warning && result.warning !== '正常') {
         html += '<div class="warning-box">⚠ ' + escapeHtml(result.warning) + '</div>';
       }
 
-      // Radar scores
+      // Radar scores (only if external API succeeded)
       const scores = result.radarScores || {};
-      const scoreLabels = {
-        CommonSense: '常识与思维弹性',
-        Empathy: '人性底线与共情基准',
-        Friction: '日常摩擦中的本能反应',
-        Reality: '关系现实感'
-      };
+      if (Object.keys(scores).length > 0) {
+        const scoreLabels = {
+          CommonSense: '常识与思维弹性',
+          Empathy: '人性底线与共情基准',
+          Friction: '日常摩擦中的本能反应',
+          Reality: '关系现实感'
+        };
 
-      html += '<div class="result-radar">';
-      Object.keys(scoreLabels).forEach(function(key) {
-        const val = scores[key] != null ? scores[key] : 0;
-        const pct3 = Math.min(val / 5 * 100, 100);
-        html += '<div class="radar-item">';
-        html += '<div class="label">' + scoreLabels[key] + '</div>';
-        html += '<div class="score">' + val.toFixed(1) + '</div>';
-        html += '<div class="bar-bg"><div class="bar-fill" style="width:' + pct3 + '%;"></div></div>';
+        html += '<div class="result-radar">';
+        Object.keys(scoreLabels).forEach(function(key) {
+          const val = scores[key] != null ? scores[key] : 0;
+          const pct3 = Math.min(val / 5 * 100, 100);
+          html += '<div class="radar-item">';
+          html += '<div class="label">' + scoreLabels[key] + '</div>';
+          html += '<div class="score">' + val.toFixed(1) + '</div>';
+          html += '<div class="bar-bg"><div class="bar-fill" style="width:' + pct3 + '%;"></div></div>';
+          html += '</div>';
+        });
         html += '</div>';
-      });
-      html += '</div>';
 
-      // Meta
-      html += '<div class="result-meta">';
-      html += '<div class="meta-item"><div class="val">' + (result.totalPenalty != null ? result.totalPenalty.toFixed(1) : '0.0') + '</div><div class="lbl">异常扣分</div></div>';
-      html += '<div class="meta-item"><div class="val">' + (result.fellIntoRoiTrap ? '是' : '否') + '</div><div class="lbl">触发测谎</div></div>';
-      html += '<div class="meta-item"><div class="val">' + proQuestions.length + '</div><div class="lbl">答题数</div></div>';
-      html += '</div>';
+        // Meta
+        html += '<div class="result-meta">';
+        html += '<div class="meta-item"><div class="val">' + (result.totalPenalty != null ? result.totalPenalty.toFixed(1) : '0.0') + '</div><div class="lbl">异常扣分</div></div>';
+        html += '<div class="meta-item"><div class="val">' + (result.fellIntoRoiTrap ? '是' : '否') + '</div><div class="lbl">触发测谎</div></div>';
+        html += '<div class="meta-item"><div class="val">' + proQuestions.length + '</div><div class="lbl">答题数</div></div>';
+        html += '</div>';
+      }
 
-      // Verify code
+      // External verify code
       if (result.verifyCode) {
         html += '<div class="verify-code">外部验真码：' + escapeHtml(result.verifyCode) + '</div>';
       }
+      // Local verify code
       if (result.localToken) {
         html += '<div class="verify-code" style="margin-top:4px;font-weight:500;">本地验真码：<span style="color:#2d2d2d;">' + escapeHtml(result.localToken) + '</span></div>';
         html += '<div style="text-align:center;margin-top:8px;"><a href="/verify.html" class="btn btn-sm btn-outline" style="font-size:0.85em;" target="_blank">去验真</a></div>';
