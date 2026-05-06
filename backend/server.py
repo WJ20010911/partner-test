@@ -517,6 +517,7 @@ def init_db():
             id TEXT PRIMARY KEY,
             question_id TEXT NOT NULL,
             reason TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'regular',
             created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS admin_logs (
@@ -567,6 +568,11 @@ def init_db():
     # Add username column to users if not exists
     try:
         conn.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT ''")
+    except Exception:
+        pass
+    # Add source column to question_skips if not exists
+    try:
+        conn.execute("ALTER TABLE question_skips ADD COLUMN source TEXT NOT NULL DEFAULT 'regular'")
     except Exception:
         pass
     # Ensure test_uploader user exists for test-login feature
@@ -1038,31 +1044,39 @@ def handle_record_skip(headers, body):
     reason = body.get("reason", "skip")
     if reason not in ("skip", "complaint"):
         return error_response("Invalid reason", 400)
+    source = body.get("source", "regular")
     conn = get_db()
     try:
         sid = uuid.uuid4().hex[:8]
         conn.execute(
-            "INSERT INTO question_skips (id, question_id, reason, created_at) VALUES (?, ?, ?, ?)",
-            (sid, question_id, reason, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            "INSERT INTO question_skips (id, question_id, reason, source, created_at) VALUES (?, ?, ?, ?, ?)",
+            (sid, question_id, reason, source, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
-        return json_response({"id": sid})
+        return json_response({"id": sid, "source": source})
     finally:
         conn.close()
 
-def handle_get_complaints(headers):
+def handle_get_complaints(headers, qs=None):
     user, err = require_admin(headers)
     if err:
         return err
     conn = get_db()
     try:
+        source_filter = ""
+        params = []
+        if qs and qs.get("source"):
+            source_filter = "AND qs.source = ? "
+            params.append(qs["source"][0])
+
         # Get all unique question_ids that have complaints, with counts
         rows = conn.execute(
             "SELECT qs.question_id, COUNT(*) as cnt, q.content as q_content "
             "FROM question_skips qs LEFT JOIN questions q ON qs.question_id = q.id "
-            "WHERE qs.reason = 'complaint' "
+            "WHERE qs.reason = 'complaint' " + source_filter +
             "GROUP BY qs.question_id, q.content "
-            "ORDER BY cnt DESC"
+            "ORDER BY cnt DESC",
+            params
         ).fetchall()
 
         # Count how many times each question appeared in tests
@@ -2106,7 +2120,7 @@ route("GET", r"/api/test/verify/([a-f0-9]+)")(lambda h, b, rid: handle_verify(h,
 route("GET", r"/api/test/verify-token")(lambda h, b, *a: None)  # handled via query params in _handle
 route("GET", r"/api/questions/replacement")(lambda h, b, *a: None)  # handled via query params in _handle
 route("POST", r"/api/test/skip")(lambda h, b, *a: handle_record_skip(h, b))
-route("GET", r"/api/questions/complaints")(lambda h, b, *a: handle_get_complaints(h))
+route("GET", r"/api/questions/complaints")(lambda h, b, *a: None)  # handled via query params in _handle
 route("DELETE", r"/api/questions/([a-f0-9]+)")(lambda h, b, qid: handle_delete_question(h, qid))
 route("GET", r"/api/test/([a-f0-9]+)")(lambda h, b, rid: handle_get_record(h, rid))
 route("POST", r"/api/admin/auth")(lambda h, b, *a: handle_admin_auth(h, b))
@@ -2430,6 +2444,9 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                     elif path == "/api/questions/replacement" and method == "GET":
                         qs = parse_qs(parsed.query)
                         status, resp_data, content_type = handle_get_replacement(self.headers, qs)
+                    elif path == "/api/questions/complaints" and method == "GET":
+                        qs = parse_qs(parsed.query)
+                        status, resp_data, content_type = handle_get_complaints(self.headers, qs)
                     else:
                         args = match.groups()
                         try:

@@ -44,7 +44,7 @@ const api = {
   getPendingQuestions() { return this.get('/api/questions/pending'); },
   getAllQuestions() { return this.get('/api/questions/all'); },
   reviewQuestion(id, status) { return this.patch(`/api/questions/${id}`, { status }); },
-  getComplaints() { return this.get('/api/questions/complaints'); },
+  getComplaints(source) { return this.get('/api/questions/complaints' + (source ? '?source=' + source : '')); },
 
   deleteQuestion(id) { return this.request('DELETE', `/api/questions/${id}`); },
 

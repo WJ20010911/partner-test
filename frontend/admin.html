@@ -389,7 +389,7 @@
     async function renderProComplaintsSection(target) {
       var data;
       try {
-        data = await api.getComplaints();
+        data = await api.getComplaints('pro');
       } catch (e) {
         target.innerHTML = '<p style="color:#721c24;text-align:center;">加载投诉失败: ' + escapeHtml(e.message) + '</p>';
         return;

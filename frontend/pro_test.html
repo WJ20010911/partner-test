@@ -352,7 +352,7 @@
         fetch('/api/test/skip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question_id: qid, reason: 'complaint' })
+          body: JSON.stringify({ question_id: qid, reason: 'complaint', source: 'pro' })
         }).catch(function(e) {});
       }
 
