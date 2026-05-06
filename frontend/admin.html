@@ -522,6 +522,8 @@
     }
 
     async function uploadProQuestionsJson(questions, path) {
+      // Convert camelCase keys to PascalCase for C# backend
+      questions = toPascalKeys(questions);
       const PRO_API = 'https://partner-text-pro-production.up.railway.app';
       try {
         var blob = new Blob([JSON.stringify(questions)], { type: 'application/json' });
@@ -555,6 +557,7 @@
       if (selected.length === 0) { showFlash('请先勾选要删除的题目', 'error'); return; }
       if (!confirm('确定要删除选中的 ' + selected.length + ' 道 Pro 题吗？此操作不可撤销。')) return;
       var remaining = (window.proQuestionCache || []).filter(function(q) { return selected.indexOf(q.id) === -1; });
+      if (remaining.length === 0) { showFlash('至少要保留一题，不能删除全部题目', 'error'); return; }
       // Always update local cache immediately
       window.proQuestionCache = remaining;
       filterProQuestions();
@@ -577,13 +580,30 @@
       URL.revokeObjectURL(a.href);
     }
 
+    function toPascalKeys(obj) {
+      if (Array.isArray(obj)) return obj.map(toPascalKeys);
+      if (obj !== null && typeof obj === 'object') {
+        var r = {};
+        for (var k in obj) {
+          var pk = k.charAt(0).toUpperCase() + k.slice(1);
+          r[pk] = toPascalKeys(obj[k]);
+        }
+        return r;
+      }
+      return obj;
+    }
+
     async function uploadProQuestions(event, replaceAll) {
       var file = event.target.files[0];
       if (!file) return;
       if (replaceAll && !confirm('确定要用此 JSON 覆盖 Pro 题库吗？')) { event.target.value = ''; return; }
       try {
         var text = await file.text();
-        var questions = JSON.parse(text);
+        var questions = toPascalKeys(JSON.parse(text));
+        // 验证每个题目都有 Id
+        for (var i = 0; i < questions.length; i++) {
+          if (!questions[i].Id) throw new Error('第 ' + (i+1) + ' 题缺少 Id 字段');
+        }
         var path = replaceAll ? '/api/match/questions/replace' : '/api/match/questions/upload';
         var res = await uploadProQuestionsJson(questions, path);
         showFlash('Pro 题库已更新，总量 ' + (res.total_questions || res.replaced_questions || '-'), 'success');
