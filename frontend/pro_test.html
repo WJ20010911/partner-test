@@ -125,8 +125,7 @@
       <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
         <strong>📖 操作说明</strong><br>
         · <strong>跳过</strong> — 这道题不适合你，换一道类似的题继续。<br>
-        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br>
-        · <strong>延长 5 秒</strong> — 倒计时快结束时可使用，每道题最多加 3 次。<br><br>
+        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br><br>
         ⚠ 注意：此模式使用独立题库和独立评分算法，结果不与普通版互通。
       </div>
       <button class="btn btn-primary" onclick="startProTest()">开始 Pro 深度测试</button>
@@ -147,7 +146,6 @@
         <ul class="options-list" id="options-list"></ul>
         <div style="display:flex;gap:8px;margin-top:16px;">
           <button class="btn btn-sm btn-outline" id="skip-btn" onclick="skipQuestion(false)" style="flex:1;font-size:0.85em;">跳过</button>
-          <button class="btn btn-sm btn-outline" id="extend-btn" onclick="extendTime()" style="flex:1;font-size:0.85em;border-color:#ffa726;color:#ffa726;" disabled>延长 5 秒<span id="extend-count"> (0/3)</span></button>
           <button class="btn btn-sm btn-outline" id="complain-btn" onclick="skipQuestion(true)" style="flex:1;font-size:0.85em;border-color:#e88d9e;color:#e88d9e;">投诉并跳过</button>
         </div>
       </div>
@@ -187,10 +185,8 @@
     let answers = [];
     let selectedOption = -1;
     let timerInterval = null;
-    let extendCount = 0;
     let timerRemaining = 0;
     let timerLimit = 0;
-    const MAX_EXTENDS = 3;
     const TARGET_ANSWER_COUNT = 12;
     let questionStartTime = 0;
 
@@ -271,7 +267,6 @@
       document.getElementById('next-btn').disabled = true;
 
       // Timer
-      extendCount = 0;
       if (q.time_limit && q.time_limit > 0) {
         timerRemaining = q.time_limit;
         timerLimit = q.time_limit;
@@ -281,26 +276,11 @@
         bar.style.width = '100%';
         bar.style.transition = 'none';
 
-        const extBtn = document.getElementById('extend-btn');
-        extBtn.disabled = true;
-        extBtn.style.opacity = '0.5';
-        document.getElementById('extend-count').textContent = '0/3';
-
         bar.offsetHeight;
         bar.style.transition = 'width 1s linear';
 
         timerInterval = setInterval(function() {
           timerRemaining--;
-          const eBtn = document.getElementById('extend-btn');
-          const eCnt = document.getElementById('extend-count');
-          if (timerRemaining <= 5 && extendCount < MAX_EXTENDS) {
-            eBtn.disabled = false;
-            eBtn.style.opacity = '1';
-          } else {
-            eBtn.disabled = true;
-            eBtn.style.opacity = '0.5';
-          }
-          eCnt.textContent = extendCount + '/3';
           const pct2 = (timerRemaining / timerLimit) * 100;
           bar.style.width = Math.max(0, pct2) + '%';
           if (timerRemaining <= 0) {
@@ -318,16 +298,6 @@
         btn.classList.toggle('selected', parseInt(btn.dataset.index) === idx);
       });
       document.getElementById('next-btn').disabled = false;
-    }
-
-    function extendTime() {
-      if (extendCount >= MAX_EXTENDS || timerRemaining <= 0) return;
-      extendCount++;
-      timerRemaining += 5;
-      const eBtn = document.getElementById('extend-btn');
-      eBtn.disabled = true;
-      eBtn.style.opacity = '0.5';
-      document.getElementById('extend-count').textContent = extendCount + '/3';
     }
 
     async function fetchReplacementQuestion() {
@@ -411,7 +381,7 @@
       var totalPenalty = externalResult ? (externalResult.totalPenalty || 0) : 0;
       var radarScoreSum = 0;
       if (externalResult) {
-        Object.values(externalResult.radarScores || {}).forEach(function(v) { radarScoreSum += v; });
+        Object.values(externalResult.radarScores || {}).forEach(function(v) { radarScoreSum += Math.round(v * 100) / 100; });
       }
       var finalScore = Math.round((radarScoreSum + totalPenalty) * 10) / 10;
       var surfaceScore = Math.max(0, Math.round((100 - finalScore) * 10) / 10);
@@ -455,69 +425,31 @@
 
       let html = '';
 
-      // External API error banner
+      // Two-score summary card
+      html += '<div style="background:#f8f9fa;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;">';
+      html += '<div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">';
+      html += '<div><div style="font-size:2.2em;font-weight:700;color:#2d2d2d;">' + (result.finalScore != null ? result.finalScore.toFixed(1) : '0.0') + '</div>';
+      html += '<div style="font-size:0.85em;color:#888;margin-top:4px;">四维总分</div></div>';
+      html += '<div><div style="font-size:2.2em;font-weight:700;color:#e88d9e;">' + (result.totalPenalty || 0).toFixed(1) + '</div>';
+      html += '<div style="font-size:0.85em;color:#888;margin-top:4px;">扣分</div></div>';
+      html += '</div>';
+
       if (externalError) {
-        html += '<div class="warning-box" style="background:#fff3cd;border-color:#ffeeba;color:#856404;margin-bottom:12px;">';
-        html += '<strong>⚠ 外部评分服务暂不可用</strong><br>';
-        html += '<span style="font-size:0.9em;">雷达评分无法加载（' + escapeHtml(externalError) + '）。你的答题记录已保存，可使用本地验真码验证。</span>';
-        html += '</div>';
+        html += '<div style="margin-top:12px;font-size:0.8em;color:#856404;">⚠ 外部评分暂不可用</div>';
       }
+      html += '</div>';
 
-      // Warning
-      if (result.warning && result.warning !== '正常') {
-        html += '<div class="warning-box">⚠ ' + escapeHtml(result.warning) + '</div>';
-      }
-
-      // Radar scores (only if external API succeeded)
-      const scores = result.radarScores || {};
-      if (Object.keys(scores).length > 0) {
-        const scoreLabels = {
-          CommonSense: '常识与思维弹性',
-          Empathy: '人性底线与共情基准',
-          Friction: '日常摩擦中的本能反应',
-          Reality: '关系现实感'
-        };
-
-        html += '<div class="result-radar">';
-        Object.keys(scoreLabels).forEach(function(key) {
-          const val = scores[key] != null ? scores[key] : 0;
-          const pct3 = Math.min(val / 5 * 100, 100);
-          html += '<div class="radar-item">';
-          html += '<div class="label">' + scoreLabels[key] + '</div>';
-          html += '<div class="score">' + val.toFixed(1) + '</div>';
-          html += '<div class="bar-bg"><div class="bar-fill" style="width:' + pct3 + '%;"></div></div>';
-          html += '</div>';
-        });
-        html += '</div>';
-
-        // Meta
-        html += '<div class="result-meta">';
-        html += '<div class="meta-item"><div class="val">' + (result.totalPenalty != null ? result.totalPenalty.toFixed(1) : '0.0') + '</div><div class="lbl">异常扣分</div></div>';
-        html += '<div class="meta-item"><div class="val">' + (result.fellIntoRoiTrap ? '是' : '否') + '</div><div class="lbl">触发测谎</div></div>';
-        html += '<div class="meta-item"><div class="val">' + proQuestions.length + '</div><div class="lbl">答题数</div></div>';
-        html += '</div>';
-      }
-
-      // External verify code
-      if (result.verifyCode) {
-        html += '<div class="verify-code">外部验真码：' + escapeHtml(result.verifyCode) + '</div>';
-      }
-      // Local verify code with copy button
+      // Verify code card
       if (result.localToken) {
-        html += '<div class="verify-code" style="margin-top:4px;font-weight:500;">本地验真码：<span id="local-token" style="color:#2d2d2d;">' + escapeHtml(result.localToken) + '</span>';
-        html += ' <button onclick="copyToken()" style="border:none;background:#2d2d2d;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:0.85em;vertical-align:middle;">复制</button>';
+        html += '<div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:10px;padding:16px;">';
+        html += '<div style="font-size:0.85em;color:#888;margin-bottom:8px;">验真码</div>';
+        html += '<div style="display:flex;align-items:center;gap:10px;">';
+        html += '<code id="local-token" style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:6px;font-size:13px;word-break:break-all;font-family:monospace;color:#333;">' + escapeHtml(result.localToken) + '</code>';
+        html += '<button onclick="copyToken()" style="border:none;background:#2d2d2d;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.85em;white-space:nowrap;">复制</button>';
         html += '</div>';
-        html += '<div style="text-align:center;margin-top:8px;">';
-        html += '<a href="/verify.html" class="btn btn-sm btn-outline" style="font-size:0.85em;" target="_blank">去验真</a>';
+        html += '<div style="margin-top:12px;text-align:center;">';
+        html += '<a href="/verify.html" class="btn btn-sm btn-outline" target="_blank">去验真</a>';
         html += '</div>';
-      }
-      // Final score summary
-      if (result.finalScore != null) {
-        html += '<div class="result-meta" style="margin-top:12px;">';
-        html += '<div class="meta-item"><div class="val">' + result.finalScore.toFixed(1) + '</div><div class="lbl">综合得分</div></div>';
-        if (result.surfaceScore != null) {
-          html += '<div class="meta-item"><div class="val">' + result.surfaceScore.toFixed(1) + '</div><div class="lbl">表面分</div></div>';
-        }
         html += '</div>';
       }
 

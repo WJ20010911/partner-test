@@ -511,6 +511,7 @@ def init_db():
             surface_score REAL NOT NULL,
             real_score REAL NOT NULL,
             token TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'regular',
             created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS question_skips (
@@ -573,6 +574,11 @@ def init_db():
     # Add source column to question_skips if not exists
     try:
         conn.execute("ALTER TABLE question_skips ADD COLUMN source TEXT NOT NULL DEFAULT 'regular'")
+    except Exception:
+        pass
+    # Add source column to test_records if not exists
+    try:
+        conn.execute("ALTER TABLE test_records ADD COLUMN source TEXT NOT NULL DEFAULT 'regular'")
     except Exception:
         pass
     # Ensure test_uploader user exists for test-login feature
@@ -939,7 +945,7 @@ def handle_submit_test(headers, body):
         rid = uuid.uuid4().hex[:8]
         token = generate_token(rid, real_score)
         conn.execute(
-            "INSERT INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO test_records (id, answers, surface_score, real_score, token, source, created_at) VALUES (?, ?, ?, ?, ?, 'regular', ?)",
             (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         # Dual-write to backup_records for redundancy
@@ -969,7 +975,7 @@ def handle_pro_submit(headers, body):
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO test_records (id, answers, surface_score, real_score, token, source, created_at) VALUES (?, ?, ?, ?, ?, 'pro', ?)",
             (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
@@ -1105,7 +1111,7 @@ def handle_get_complaints(headers, qs=None):
         # Count how many times each question appeared in tests
         # test_records.answers is a JSON array of {question_id, ...}
         answer_counts = {}
-        all_records = conn.execute("SELECT answers FROM test_records").fetchall()
+        all_records = conn.execute("SELECT answers FROM test_records WHERE source='regular'").fetchall()
         for rec in all_records:
             seen = set()
             try:
@@ -1357,7 +1363,7 @@ def handle_set_tester_nickname(body):
 def handle_public_stats(headers, body, *args):
     conn = get_db()
     try:
-        total = conn.execute("SELECT COUNT(*) as c FROM test_records").fetchone()["c"]
+        total = conn.execute("SELECT COUNT(*) as c FROM test_records WHERE source='regular'").fetchone()["c"]
         qcount = conn.execute("SELECT COUNT(*) as c FROM questions WHERE status='approved'").fetchone()["c"]
         return json_response({"total_tests": total, "question_count": qcount})
     finally:
@@ -1511,8 +1517,8 @@ def handle_admin_stats(headers):
         return err
     conn = get_db()
     try:
-        total = conn.execute("SELECT COUNT(*) as c FROM test_records").fetchone()["c"]
-        row = conn.execute("SELECT MAX(real_score) as mx, MIN(real_score) as mn, AVG(real_score) as av FROM test_records").fetchone()
+        total = conn.execute("SELECT COUNT(*) as c FROM test_records WHERE source='regular'").fetchone()["c"]
+        row = conn.execute("SELECT MAX(real_score) as mx, MIN(real_score) as mn, AVG(real_score) as av FROM test_records WHERE source='regular'").fetchone()
         question_count = conn.execute("SELECT COUNT(*) as c FROM questions WHERE status='approved'").fetchone()["c"]
         return json_response({
             "total_tests": total,
@@ -1532,7 +1538,7 @@ def handle_admin_score_distribution(headers):
         return err
     conn = get_db()
     try:
-        rows = conn.execute("SELECT real_score FROM test_records").fetchall()
+        rows = conn.execute("SELECT real_score FROM test_records WHERE source='regular'").fetchall()
         buckets = {"0-10":0,"11-20":0,"21-30":0,"31-40":0,"41-50":0,"51-60":0,"61-70":0,"71-80":0,"81-90":0,"91-100":0}
         for r in rows:
             s = r["real_score"]
@@ -1557,7 +1563,7 @@ def handle_admin_test_trend(headers):
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT date(created_at) as day, COUNT(*) as cnt FROM test_records GROUP BY day ORDER BY day ASC LIMIT 30"
+            "SELECT date(created_at) as day, COUNT(*) as cnt FROM test_records WHERE source='regular' GROUP BY day ORDER BY day ASC LIMIT 30"
         ).fetchall()
         return json_response({"daily": [{"date": r["day"], "count": r["cnt"]} for r in rows]})
     finally:
@@ -1641,7 +1647,7 @@ def handle_admin_export(headers):
         return err
     conn = get_db()
     try:
-        rows = conn.execute("SELECT * FROM test_records ORDER BY created_at DESC").fetchall()
+        rows = conn.execute("SELECT * FROM test_records WHERE source='regular' ORDER BY created_at DESC").fetchall()
         records = []
         for r in rows:
             records.append({
