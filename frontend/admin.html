@@ -454,7 +454,7 @@
         var text = [item.id, item.content, item.category].join(' ').toLowerCase();
         return !q || text.indexOf(q) !== -1;
       });
-      var html = '<table class="admin-table"><thead><tr><th>ID</th><th>分类</th><th>题目</th><th>选项</th><th>时限</th></tr></thead><tbody>';
+      var html = '<table class="admin-table"><thead><tr><th>ID</th><th>分类</th><th>题目</th><th>选项</th><th>时限</th><th>操作</th></tr></thead><tbody>';
       questions.forEach(function(item, idx) {
         var optCount = (item.options || []).length;
         var timeLimit = item.time_limit || item.timeLimit || '-';
@@ -464,7 +464,7 @@
         html += '<td>' + escapeHtml(item.category || '-') + '</td>';
         html += '<td style="max-width:300px;word-break:break-all;">' + escapeHtml(item.content || '-') + '</td>';
         html += '<td>' + optCount + '</td>';
-        html += '<td>' + timeLimit + 's</td></tr>';
+        html += '<td>' + timeLimit + 's</td><td><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();editProQuestion(' + idx + ')" style="font-size:12px;padding:2px 8px;">编辑</button></td></tr>';
         html += '<tr id="' + rowId + '" style="display:none;"><td colspan="5" style="background:#f9f9f9;padding:12px 16px;">';
         html += '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">选项列表</div>';
         html += '<ol style="margin:0;padding-left:20px;font-size:13px;color:#555;">';
@@ -478,6 +478,83 @@
       });
       html += '</tbody></table>';
       container.innerHTML = html;
+    }
+
+    function editProQuestion(idx) {
+      var item = window.proQuestionCache[idx];
+      if (!item) return;
+      window.proEditIdx = idx;
+      window.isProEdit = true;
+      document.getElementById('edit-qid').value = item.id || '';
+      document.getElementById('edit-content').value = item.content || '';
+      document.getElementById('edit-dimension').value = item.dimension || '';
+      document.getElementById('edit-weight').value = item.weight != null ? item.weight : 1.0;
+      document.getElementById('edit-timelimit').value = item.time_limit || item.timeLimit || 0;
+      document.getElementById('edit-tags').value = '';
+      document.getElementById('edit-password').value = '';
+      document.getElementById('edit-flash').innerHTML = '';
+      try { document.getElementById('edit-tags').parentElement.style.display = 'none'; } catch(e) {}
+      renderEditOptions(item.options || []);
+      document.getElementById('edit-modal').style.display = 'block';
+    }
+
+    async function saveProEdit() {
+      var password = document.getElementById('edit-password').value;
+      if (!password) {
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-error">请输入管理员密码确认修改</div>';
+        return;
+      }
+      var optionRows = document.querySelectorAll('#edit-options .edit-option-row');
+      var options = [];
+      for (var i = 0; i < optionRows.length; i++) {
+        var text = optionRows[i].querySelector('.edit-opt-text').value.trim();
+        var score = parseFloat(optionRows[i].querySelector('.edit-opt-score').value) || 0;
+        if (text) options.push({ text: text, score: score });
+      }
+      if (options.length < 2) {
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-error">至少需要 2 个选项</div>';
+        return;
+      }
+      var updated = {
+        id: document.getElementById('edit-qid').value,
+        content: document.getElementById('edit-content').value.trim(),
+        category: window.proQuestionCache[window.proEditIdx].category || '',
+        dimension: document.getElementById('edit-dimension').value.trim(),
+        weight: parseFloat(document.getElementById('edit-weight').value) || 1.0,
+        time_limit: parseInt(document.getElementById('edit-timelimit').value) || 0,
+        options: options
+      };
+      window.proQuestionCache[window.proEditIdx] = updated;
+      try {
+        var res = await uploadProQuestionsJson(window.proQuestionCache, '/api/match/questions/replace');
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-success">修改成功，题库总量 ' + (res.total_questions || res.replaced_questions || '-') + '</div>';
+        document.getElementById('edit-password').value = '';
+        filterProQuestions();
+        setTimeout(function() { closeEditModal(); }, 1000);
+      } catch (e) {
+        document.getElementById('edit-flash').innerHTML = '<div class="flash flash-error">' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    async function uploadProQuestionsJson(questions, path) {
+      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+      try {
+        var r = await fetch(PRO_API + path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(questions)
+        });
+        if (!r.ok) {
+          var errText = await r.text().catch(function() { return ''; });
+          throw new Error(errText || 'HTTP ' + r.status);
+        }
+        return await r.json();
+      } catch (e) {
+        if (e.message.indexOf('Failed to fetch') !== -1 || e.message.indexOf('NetworkError') !== -1) {
+          throw new Error('无法连接 Pro 后端服务');
+        }
+        throw e;
+      }
     }
 
     async function downloadProQuestions() {
@@ -495,8 +572,10 @@
       if (!file) return;
       if (replaceAll && !confirm('确定要用此 JSON 覆盖 Pro 题库吗？')) { event.target.value = ''; return; }
       try {
+        var text = await file.text();
+        var questions = JSON.parse(text);
         var path = replaceAll ? '/api/match/questions/replace' : '/api/match/questions/upload';
-        var res = await uploadProQuestionFile(path, file);
+        var res = await uploadProQuestionsJson(questions, path);
         showFlash('Pro 题库已更新，总量 ' + (res.total_questions || res.replaced_questions || '-'), 'success');
         loadProSection('questions');
       } catch (e) {
@@ -808,6 +887,9 @@
 
     function closeEditModal() {
       document.getElementById('edit-modal').style.display = 'none';
+      window.isProEdit = false;
+      window.proEditIdx = -1;
+      try { document.getElementById('edit-tags').parentElement.style.display = ''; } catch(e) {}
     }
 
     function renderEditOptions(options) {
@@ -836,6 +918,10 @@
     }
 
     async function saveEdit() {
+      if (window.isProEdit) {
+        await saveProEdit();
+        return;
+      }
       var qid = document.getElementById('edit-qid').value;
       var password = document.getElementById('edit-password').value;
       if (!password) {

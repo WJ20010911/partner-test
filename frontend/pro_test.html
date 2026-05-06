@@ -377,14 +377,15 @@
         externalError = e.message;
       }
 
-      // Calculate final score: 4-dimension sum + totalPenalty
-      var totalPenalty = externalResult ? (externalResult.totalPenalty || 0) : 0;
+      // Calculate: 4-dimension sum (rounded) and penalty (rounded), kept separate
+      var totalPenalty = externalResult ? Math.round((externalResult.totalPenalty || 0) * 100) / 100 : 0;
       var radarScoreSum = 0;
       if (externalResult) {
         Object.values(externalResult.radarScores || {}).forEach(function(v) { radarScoreSum += Math.round(v * 100) / 100; });
       }
-      var finalScore = Math.round((radarScoreSum + totalPenalty) * 10) / 10;
-      var surfaceScore = Math.max(0, Math.round((100 - finalScore) * 10) / 10);
+      radarScoreSum = Math.round(radarScoreSum * 100) / 100;
+      var finalScore = radarScoreSum;  // 四维总分，不含扣分
+      var surfaceScore = Math.max(0, Math.round((100 - (radarScoreSum + totalPenalty)) * 10) / 10);
 
       // Submit to local server once, with correct scores
       var localToken = null;
@@ -409,13 +410,18 @@
       var result = externalResult || {};
       result.localToken = localToken;
       result.finalScore = finalScore;
+      result.totalPenalty = totalPenalty;
+      result.radarScoreSum = radarScoreSum;
       result.surfaceScore = surfaceScore;
+      result.isFlagged = externalResult ? externalResult.isFlagged : false;
 
       if (externalResult) {
         renderProResult(result);
       } else {
         result.radarScores = {};
         result.totalPenalty = 0;
+        result.radarScoreSum = 0;
+        result.isFlagged = false;
         renderProResult(result, externalError);
       }
     }
@@ -436,6 +442,11 @@
 
       if (externalError) {
         html += '<div style="margin-top:12px;font-size:0.8em;color:#856404;">⚠ 外部评分暂不可用</div>';
+      } else {
+        html += '<div style="margin-top:12px;">';
+        html += '<span style="display:inline-block;padding:4px 20px;border-radius:20px;font-size:0.9em;font-weight:600;';
+        html += result.isFlagged ? 'background:#fce4ec;color:#c62828;">无效' : 'background:#e8f5e9;color:#2e7d32;">有效';
+        html += '</span></div>';
       }
       html += '</div>';
 
