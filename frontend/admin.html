@@ -92,6 +92,10 @@
 
   <!-- Admin Main Screen -->
   <div class="container admin-main" id="admin-main">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div></div>
+      <button class="btn btn-sm btn-outline" onclick="logout()" style="border-color:#e88d9e;color:#e88d9e;font-size:12px;">退出登录</button>
+    </div>
     <div class="card" id="stats-overview-card">
       <h2 style="color:var(--primary-dark);margin-bottom:20px;">数据概览</h2>
       <div class="stats-grid">
@@ -132,6 +136,20 @@
     function getAdminToken() { return localStorage.getItem(ADMIN_TOKEN_KEY); }
     function setAdminToken(t) { localStorage.setItem(ADMIN_TOKEN_KEY, t); }
     function clearAdminToken() { localStorage.removeItem(ADMIN_TOKEN_KEY); }
+    function logout() {
+      clearAdminToken();
+      api.clearToken();
+      document.getElementById('admin-main').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'block';
+      document.getElementById('admin-password').value = '';
+      document.getElementById('login-error').textContent = '';
+    }
+    function handleUnauthorized() {
+      if (getAdminToken()) {
+        logout();
+        document.getElementById('login-error').textContent = '登录已过期，请重新输入密码';
+      }
+    }
 
     (function init() {
       var token = getAdminToken();
@@ -245,78 +263,224 @@
         container.innerHTML = html;
 
       } catch (e) {
+        if (e.status === 401) { handleUnauthorized(); return; }
         container.innerHTML = '<p style="color:#721c24;text-align:center;">加载失败: ' + e.message + '</p>';
       }
     }
 
     async function loadProRecords() {
-      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+      loadProSection('records');
+    }
+
+    function renderProNav(active) {
+      var tabs = [
+        ['records', '测试记录'],
+        ['complaints', '投诉题'],
+        ['questions', '题库'],
+        ['backup', '备份']
+      ];
+      var html = '<div class="section-title" style="color:#000;">Pro 深度算法测试</div>';
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">';
+      tabs.forEach(function(t) {
+        var style = active === t[0]
+          ? 'background:#000;color:#fff;border-color:#000;'
+          : 'border-color:#000;color:#000;background:#fff;';
+        html += '<button class="btn btn-sm btn-outline" style="' + style + '" onclick="loadProSection(\'' + t[0] + '\')">' + t[1] + '</button>';
+      });
+      html += '</div><div id="pro-section-content"><div class="spinner"></div></div>';
+      return html;
+    }
+
+    async function loadProSection(section) {
       var container = document.getElementById('admin-content');
+      container.innerHTML = renderProNav(section);
+      var target = document.getElementById('pro-section-content');
       try {
-        var r = await fetch(PRO_API + '/api/match/records');
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        var data = await r.json();
-        var records = data.records || [];
-
-        var html = '<div class="section-title" style="color:#000;">Pro 深度算法测试</div>';
-        html += '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">';
-        html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + (data.total_tests || 0) + '</div><div class="label">测试总人次</div></div>';
-        html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + (data.total_questions || 0) + '</div><div class="label">Pro 题库数量</div></div>';
-        html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;font-size:24px;">' + (data.api_status || 'running') + '</div><div class="label">连接状态</div></div>';
-        html += '</div>';
-
-        if (!records.length) {
-          html += '<p style="color:var(--text-light);text-align:center;margin-top:20px;">暂无 Pro 测试记录</p>';
-          container.innerHTML = html;
-          return;
-        }
-
-        html += '<div class="section-title" style="color:#000;">测试记录</div>';
-        records.forEach(function(rec) {
-          var details = rec.answerDetails || [];
-          html += '<div class="card" style="border-color:#000;margin-bottom:14px;">';
-          html += '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
-          html += '<strong style="color:#000;">#' + rec.id + ' · ' + escapeHtml(rec.verifyCode || '-') + '</strong>';
-          html += '<span style="color:var(--text-light);font-size:13px;">' + (rec.createdAt || '').slice(0,19).replace('T', ' ') + '</span>';
-          html += '</div>';
-          html += '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">';
-          html += renderProMiniStat('常识', rec.scoreCommonSense);
-          html += renderProMiniStat('共情', rec.scoreEmpathy);
-          html += renderProMiniStat('摩擦', rec.scoreFriction);
-          html += renderProMiniStat('现实', rec.scoreReality);
-          html += renderProMiniStat('异常', rec.penaltyScore);
-          html += renderProMiniStat('测谎', rec.isFlagged ? '异常' : '正常');
-          html += '</div>';
-          html += '<details><summary style="cursor:pointer;color:#000;font-weight:600;">查看分数细节（' + details.length + ' 题）</summary>';
-          html += '<table class="admin-table" style="margin-top:10px;font-size:13px;"><thead><tr><th>#</th><th>常识</th><th>共情</th><th>摩擦</th><th>现实</th><th>权重</th><th>用时</th><th>题目</th><th>选择</th></tr></thead><tbody>';
-          details.forEach(function(d) {
-            html += '<tr>';
-            html += '<td>' + ((d.index || 0) + 1) + '</td>';
-            if (d.scores) {
-              // 新格式：4维全量分数
-              var dimLabels = ['CommonSense', 'Empathy', 'Friction', 'Reality'];
-              dimLabels.forEach(function(dim) {
-                var val = d.scores[dim];
-                html += '<td style="font-weight:600;color:#000;">' + (val != null ? Number(val).toFixed(1) : '-') + '</td>';
-              });
-            } else {
-              // 旧格式：仅单维度
-              html += '<td colspan="4" style="font-size:12px;color:var(--text-light);">' + escapeHtml(d.dimension || '-') + ': ' + (d.rawScore != null ? d.rawScore : '-') + ' → ' + (d.contribution != null ? Number(d.contribution).toFixed(1) : '-') + '</td>';
-            }
-            html += '<td>×' + (d.weight != null ? d.weight : '-') + '</td>';
-            html += '<td>' + (d.timeTaken != null ? Number(d.timeTaken).toFixed(1) + 's' : '-') + '</td>';
-            html += '<td style="max-width:200px;word-break:break-all;">' + escapeHtml(d.questionContent || '-') + '</td>';
-            html += '<td style="max-width:160px;word-break:break-all;">' + escapeHtml(d.selectedText || '-') + '</td>';
-            html += '</tr>';
-          });
-          html += '</tbody></table></details>';
-          html += '</div>';
-        });
-
-        container.innerHTML = html;
+        if (section === 'records') await renderProRecordsSection(target);
+        else if (section === 'complaints') await renderProComplaintsSection(target);
+        else if (section === 'questions') await renderProQuestionsSection(target);
+        else if (section === 'backup') renderProBackupSection(target);
       } catch (e) {
-        container.innerHTML = '<p style="color:#721c24;text-align:center;">Pro 后端连接失败: ' + escapeHtml(e.message) + '</p>';
+        target.innerHTML = '<p style="color:#721c24;text-align:center;">Pro 后端连接失败: ' + escapeHtml(e.message) + '</p>';
       }
+    }
+
+    async function fetchProJson(path) {
+      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+      var r = await fetch(PRO_API + path);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    }
+
+    async function uploadProQuestionFile(path, file) {
+      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+      var fd = new FormData();
+      fd.append('file', file);
+      var r = await fetch(PRO_API + path, { method: 'POST', body: fd });
+      if (!r.ok) throw new Error(await r.text() || ('HTTP ' + r.status));
+      return await r.json();
+    }
+
+    async function renderProRecordsSection(target) {
+      var data = await fetchProJson('/api/match/records');
+      var records = data.records || [];
+
+      var html = '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + (data.total_tests || 0) + '</div><div class="label">测试总人次</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + (data.total_questions || 0) + '</div><div class="label">Pro 题库数量</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;font-size:24px;">' + (data.api_status || 'running') + '</div><div class="label">连接状态</div></div>';
+      html += '</div>';
+
+      if (!records.length) {
+        target.innerHTML = html + '<p style="color:var(--text-light);text-align:center;margin-top:20px;">暂无 Pro 测试记录</p>';
+        return;
+      }
+
+      html += '<div class="section-title" style="color:#000;">测试记录</div>';
+      records.forEach(function(rec) {
+        var details = normalizeProDetails(rec.answerDetails);
+        html += '<div class="card" style="border-color:#000;margin-bottom:14px;">';
+        html += '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
+        html += '<strong style="color:#000;">#' + rec.id + ' · ' + escapeHtml(rec.verifyCode || '-') + '</strong>';
+        html += '<span style="color:var(--text-light);font-size:13px;">' + (rec.createdAt || '').slice(0,19).replace('T', ' ') + '</span>';
+        html += '</div>';
+        html += '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">';
+        html += renderProMiniStat('常识', rec.scoreCommonSense);
+        html += renderProMiniStat('共情', rec.scoreEmpathy);
+        html += renderProMiniStat('摩擦', rec.scoreFriction);
+        html += renderProMiniStat('现实', rec.scoreReality);
+        html += renderProMiniStat('异常', rec.penaltyScore);
+        html += renderProMiniStat('测谎', rec.isFlagged ? '异常' : '正常');
+        html += '</div>';
+        html += '<details><summary style="cursor:pointer;color:#000;font-weight:600;">查看分数细节（' + details.length + ' 题）</summary>';
+        html += renderProAnswerDetailsTable(details);
+        html += '</details></div>';
+      });
+
+      target.innerHTML = html;
+    }
+
+    function normalizeProDetails(details) {
+      if (Array.isArray(details)) return details;
+      if (!details) return [];
+      try { return JSON.parse(details); } catch (e) { return []; }
+    }
+
+    function renderProAnswerDetailsTable(details) {
+      var html = '<table class="admin-table" style="margin-top:10px;font-size:13px;"><thead><tr><th>#</th><th>常识</th><th>共情</th><th>摩擦</th><th>现实</th><th>权重</th><th>用时</th><th>题目</th><th>选择</th></tr></thead><tbody>';
+      details.forEach(function(d) {
+        html += '<tr>';
+        html += '<td>' + ((d.index || 0) + 1) + (d.complaint ? '<br><span class="badge badge-danger">投诉</span>' : '') + '</td>';
+        var dimLabels = ['CommonSense', 'Empathy', 'Friction', 'Reality'];
+        dimLabels.forEach(function(dim) {
+          var val = d.scores ? d.scores[dim] : null;
+          html += '<td style="font-weight:600;color:#000;">' + (val != null ? Number(val).toFixed(1) : '-') + '</td>';
+        });
+        html += '<td>×' + (d.weight != null ? d.weight : '-') + '</td>';
+        html += '<td>' + (d.timeTaken != null ? Number(d.timeTaken).toFixed(1) + 's' : '-') + '</td>';
+        html += '<td style="max-width:200px;word-break:break-all;">' + escapeHtml(d.questionContent || '-') + '</td>';
+        html += '<td style="max-width:160px;word-break:break-all;">' + escapeHtml(d.selectedText || '-') + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+
+    async function renderProComplaintsSection(target) {
+      var data = await fetchProJson('/api/match/complaints');
+      var items = (data.grouped_complaints || []).sort(function(a, b) { return b.complaintCount - a.complaintCount; });
+      if (!items.length) {
+        target.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无 Pro 投诉题</p>';
+        return;
+      }
+
+      var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+      html += '<div class="section-title" style="color:#000;margin:0;">Pro 投诉题</div>';
+      html += '<span style="font-size:13px;color:var(--text-light);">共 ' + (data.total_complaints || 0) + ' 次投诉，' + items.length + ' 道题</span>';
+      html += '<button class="btn btn-sm btn-outline" style="border-color:#000;color:#000;margin-left:auto;" onclick="loadProSection(\'complaints\')">刷新</button>';
+      html += '</div>';
+
+      items.forEach(function(c) {
+        var time = new Date(c.latestComplaint).toLocaleString('zh-CN');
+        html += '<div class="complaint-card high-risk">';
+        html += '<div class="complaint-header"><div class="complaint-body">';
+        html += '<div class="qtext">' + escapeHtml(c.questionContent || c.questionId || '-') + '</div>';
+        html += '<div class="complaint-meta">';
+        html += '<span><span class="badge badge-danger">' + c.complaintCount + ' 次</span></span>';
+        html += '<span>最近 ' + time + '</span>';
+        html += '</div></div></div></div>';
+      });
+      target.innerHTML = html;
+    }
+
+    async function renderProQuestionsSection(target) {
+      var questions = await fetchProJson('/api/match/questions/export');
+      var html = '<div class="section-title" style="color:#000;display:flex;align-items:center;gap:10px;">Pro 题库 (' + questions.length + ' 题)';
+      html += '<button class="btn btn-sm btn-outline" style="border-color:#000;color:#000;" onclick="downloadProQuestions()">下载 JSON</button>';
+      html += '<button class="btn btn-sm btn-outline" style="border-color:#000;color:#000;" onclick="document.getElementById(\'pro-upload-input\').click()">合并上传</button>';
+      html += '<input type="file" id="pro-upload-input" accept=".json" style="display:none" onchange="uploadProQuestions(event, false)">';
+      html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="document.getElementById(\'pro-replace-input\').click()">覆盖恢复</button>';
+      html += '<input type="file" id="pro-replace-input" accept=".json" style="display:none" onchange="uploadProQuestions(event, true)">';
+      html += '</div>';
+      html += '<input type="text" id="pro-question-search" placeholder="搜索题干或 ID..." oninput="filterProQuestions()" style="width:100%;padding:10px 14px;font-size:14px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;margin-bottom:10px;">';
+      html += '<div id="pro-question-table"></div>';
+      target.innerHTML = html;
+      window.proQuestionCache = questions;
+      filterProQuestions();
+    }
+
+    function filterProQuestions() {
+      var container = document.getElementById('pro-question-table');
+      if (!container) return;
+      var q = (document.getElementById('pro-question-search')?.value || '').toLowerCase();
+      var questions = (window.proQuestionCache || []).filter(function(item) {
+        var text = [item.id, item.content, item.category].join(' ').toLowerCase();
+        return !q || text.indexOf(q) !== -1;
+      });
+      var html = '<table class="admin-table"><thead><tr><th>ID</th><th>分类</th><th>题目</th><th>选项数</th></tr></thead><tbody>';
+      questions.forEach(function(item) {
+        html += '<tr><td style="font-size:12px;word-break:break-all;">' + escapeHtml(item.id || '-') + '</td>';
+        html += '<td>' + escapeHtml(item.category || '-') + '</td>';
+        html += '<td style="max-width:360px;word-break:break-all;">' + escapeHtml(item.content || '-') + '</td>';
+        html += '<td>' + ((item.options || []).length) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    async function downloadProQuestions() {
+      var questions = window.proQuestionCache || await fetchProJson('/api/match/questions/export');
+      var blob = new Blob([JSON.stringify(questions, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'pro-questions-' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    async function uploadProQuestions(event, replaceAll) {
+      var file = event.target.files[0];
+      if (!file) return;
+      if (replaceAll && !confirm('确定要用此 JSON 覆盖 Pro 题库吗？')) { event.target.value = ''; return; }
+      try {
+        var path = replaceAll ? '/api/match/questions/replace' : '/api/match/questions/upload';
+        var res = await uploadProQuestionFile(path, file);
+        showFlash('Pro 题库已更新，总量 ' + (res.total_questions || res.replaced_questions || '-'), 'success');
+        loadProSection('questions');
+      } catch (e) {
+        showFlash('Pro 题库更新失败: ' + e.message, 'error');
+      }
+      event.target.value = '';
+    }
+
+    function renderProBackupSection(target) {
+      target.innerHTML = '<div class="section-title" style="color:#000;">Pro 备份</div>' +
+        '<p style="color:var(--text-light);font-size:13px;">备份内容为当前 Pro 完整题库 JSON。恢复覆盖会替换线上 Pro 题库。</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn btn-primary" onclick="downloadProQuestions()">下载 Pro 题库备份</button>' +
+        '<button class="btn btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="document.getElementById(\'pro-backup-restore-input\').click()">从备份覆盖恢复</button>' +
+        '<input type="file" id="pro-backup-restore-input" accept=".json" style="display:none" onchange="uploadProQuestions(event, true)">' +
+        '</div>';
     }
 
     function renderProMiniStat(label, value) {
