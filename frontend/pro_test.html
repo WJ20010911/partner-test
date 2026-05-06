@@ -400,6 +400,18 @@
           throw new Error(errText || 'HTTP ' + r.status);
         }
         const result = await r.json();
+        // Also submit to local server for verification code
+        try {
+          const localR = await fetch('/api/test/pro-submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers: answers, total_penalty: result.totalPenalty || 0 })
+          });
+          if (localR.ok) {
+            const localResult = await localR.json();
+            result.localToken = localResult.real_token;
+          }
+        } catch(e) {}
         document.getElementById('loading-screen').classList.add('hidden');
         renderProResult(result);
       } catch (e) {
@@ -449,7 +461,11 @@
 
       // Verify code
       if (result.verifyCode) {
-        html += '<div class="verify-code">验真码：' + escapeHtml(result.verifyCode) + '</div>';
+        html += '<div class="verify-code">外部验真码：' + escapeHtml(result.verifyCode) + '</div>';
+      }
+      if (result.localToken) {
+        html += '<div class="verify-code" style="margin-top:4px;font-weight:500;">本地验真码：<span style="color:#2d2d2d;">' + escapeHtml(result.localToken) + '</span></div>';
+        html += '<div style="text-align:center;margin-top:8px;"><a href="/verify.html" class="btn btn-sm btn-outline" style="font-size:0.85em;" target="_blank">去验真</a></div>';
       }
 
       document.getElementById('result-content').innerHTML = html;

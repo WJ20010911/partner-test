@@ -958,6 +958,28 @@ def handle_submit_test(headers, body):
     finally:
         conn.close()
 
+def handle_pro_submit(headers, body):
+    answers = body.get("answers", [])
+    if not answers:
+        return error_response("No answers provided")
+    rid = uuid.uuid4().hex[:8]
+    real_score = body.get("total_penalty", 0)
+    token = generate_token(rid, real_score)
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (rid, json.dumps(answers, ensure_ascii=False), 0, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+        )
+        conn.commit()
+        return json_response({
+            "record_id": rid,
+            "real_token": token,
+            "created_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        })
+    finally:
+        conn.close()
+
 def handle_verify(headers, record_id):
     conn = get_db()
     try:
@@ -2120,6 +2142,7 @@ route("GET", r"/api/test/verify/([a-f0-9]+)")(lambda h, b, rid: handle_verify(h,
 route("GET", r"/api/test/verify-token")(lambda h, b, *a: None)  # handled via query params in _handle
 route("GET", r"/api/questions/replacement")(lambda h, b, *a: None)  # handled via query params in _handle
 route("POST", r"/api/test/skip")(lambda h, b, *a: handle_record_skip(h, b))
+route("POST", r"/api/test/pro-submit")(lambda h, b, *a: handle_pro_submit(h, b))
 route("GET", r"/api/questions/complaints")(lambda h, b, *a: None)  # handled via query params in _handle
 route("DELETE", r"/api/questions/([a-f0-9]+)")(lambda h, b, qid: handle_delete_question(h, qid))
 route("GET", r"/api/test/([a-f0-9]+)")(lambda h, b, rid: handle_get_record(h, rid))
