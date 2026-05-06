@@ -1736,6 +1736,27 @@ def handle_backup_export(headers):
         conn.close()
 
 
+def handle_admin_test_records_delete(headers, body):
+    user, err = require_admin(headers)
+    if err:
+        return err
+    record_ids = body.get("record_ids", []) if isinstance(body, dict) else []
+    if not record_ids:
+        return error_response("No record IDs provided")
+    if not isinstance(record_ids, list) or len(record_ids) > 500:
+        return error_response("Invalid record_ids: must be an array of up to 500 IDs")
+    conn = get_db()
+    try:
+        placeholders = ",".join("?" for _ in record_ids)
+        conn.execute(f"DELETE FROM test_records WHERE id IN ({placeholders})", record_ids)
+        conn.execute(f"DELETE FROM backup_records WHERE id IN ({placeholders})", record_ids)
+        conn.commit()
+        log_admin_action(headers, f"batch_delete_test_records: {len(record_ids)} records")
+        return json_response({"status": "ok", "deleted": len(record_ids)})
+    finally:
+        conn.close()
+
+
 def handle_backup_restore(headers, body):
     user, err = require_admin(headers)
     if err:
@@ -1746,6 +1767,10 @@ def handle_backup_restore(headers, body):
     conn = get_db()
     try:
         now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        # If replace flag is set, delete existing regular records first
+        if data.get("replace"):
+            conn.execute("DELETE FROM test_records WHERE source='regular'")
+            conn.execute("DELETE FROM backup_records WHERE source='regular' OR source IS NULL")
         restored_records = 0
         restored_nicknames = 0
         for rec in data.get("test_records", []):
@@ -2182,6 +2207,7 @@ route("POST", r"/api/admin/backup/auto-config")(lambda h, b, *a: handle_set_auto
 route("POST", r"/api/admin/backup/trigger")(lambda h, b, *a: handle_trigger_auto_backup(h))
 route("GET", r"/api/admin/backup/download-latest")(lambda h, b, *a: handle_download_latest_backup(h))
 route("GET", r"/api/admin/backup/export")(lambda h, b, *a: handle_backup_export(h))
+route("POST", r"/api/admin/records/batch-delete")(lambda h, b, *a: handle_admin_test_records_delete(h, b))
 route("POST", r"/api/admin/backup/restore")(lambda h, b, *a: handle_backup_restore(h, b))
 route("GET", r"/api/admin/full-export")(lambda h, b, *a: handle_full_export(h))
 route("POST", r"/api/admin/full-restore")(lambda h, b, *a: handle_full_restore(h, b))

@@ -338,11 +338,11 @@
         html += '<span style="color:var(--text-light);font-size:13px;">' + (rec.createdAt || '').slice(0,19).replace('T', ' ') + '</span>';
         html += '</div>';
         html += '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">';
-        html += renderProMiniStat('常识', rec.scoreCommonSense);
-        html += renderProMiniStat('共情', rec.scoreEmpathy);
-        html += renderProMiniStat('摩擦', rec.scoreFriction);
-        html += renderProMiniStat('现实', rec.scoreReality);
-        html += renderProMiniStat('异常', rec.penaltyScore);
+        html += renderProMiniStat('常识', rec.scoreCommonSense != null ? Number(rec.scoreCommonSense).toFixed(1) : '-');
+        html += renderProMiniStat('共情', rec.scoreEmpathy != null ? Number(rec.scoreEmpathy).toFixed(1) : '-');
+        html += renderProMiniStat('摩擦', rec.scoreFriction != null ? Number(rec.scoreFriction).toFixed(1) : '-');
+        html += renderProMiniStat('现实', rec.scoreReality != null ? Number(rec.scoreReality).toFixed(1) : '-');
+        html += renderProMiniStat('异常', rec.penaltyScore != null ? Number(rec.penaltyScore).toFixed(1) : '-');
         html += renderProMiniStat('测谎', rec.isFlagged ? '异常' : '正常');
         html += '</div>';
         html += '<details><summary style="cursor:pointer;color:#000;font-weight:600;">查看分数细节（' + details.length + ' 题）</summary>';
@@ -438,7 +438,7 @@
         var text = [item.id, item.content, item.category].join(' ').toLowerCase();
         return !q || text.indexOf(q) !== -1;
       });
-      var html = '<table class="admin-table"><thead><tr><th style="width:32px;"></th><th>ID</th><th>分类</th><th>题目</th><th>选项</th><th>时限</th><th>操作</th></tr></thead><tbody>';
+      var html = '<table class="admin-table"><thead><tr><th style="width:32px;"><input type="checkbox" id="pro-select-all" onchange="toggleProSelectAll()"></th><th>ID</th><th>分类</th><th>题目</th><th>选项</th><th>时限</th><th>操作</th></tr></thead><tbody>';
       questions.forEach(function(item, idx) {
         var optCount = (item.options || []).length;
         var timeLimit = item.time_limit || item.timeLimit || '-';
@@ -540,6 +540,11 @@
         }
         throw e;
       }
+    }
+
+    function toggleProSelectAll() {
+      var checked = document.getElementById('pro-select-all').checked;
+      document.querySelectorAll('.pro-q-checkbox').forEach(function(cb) { cb.checked = checked; });
     }
 
     async function deleteProQuestions() {
@@ -1225,8 +1230,10 @@
       // Restore section
       html += '<div style="border:1px solid var(--border);border-radius:10px;padding:16px;">';
       html += '<div class="section-title" style="margin-top:0;">导入恢复</div>';
-      html += '<p style="color:var(--text-light);font-size:13px;margin-bottom:12px;">从备份 JSON 文件恢复测试记录（会跳过已存在的记录 ID，不会覆盖现有数据）</p>';
+      html += '<p style="color:var(--text-light);font-size:13px;margin-bottom:12px;">从备份 JSON 文件恢复测试记录</p>';
       html += '<input type="file" id="backup-file-input" accept=".json" style="margin-bottom:12px;display:block;">';
+      html += '<label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:var(--text-light);cursor:pointer;">';
+      html += '<input type="checkbox" id="backup-replace-check"> 覆盖模式（先删现有记录再恢复）</label>';
       html += '<button class="btn btn-primary" onclick="importBackup()">上传并恢复</button>';
       html += '</div>';
 
@@ -1247,6 +1254,13 @@
         html += '<p style="color:var(--text-light);font-size:13px;">加载备份统计失败</p>';
       }
       html += '</div>';
+
+      // ── 管理记录 ──
+      html += '<hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">';
+      html += '<div class="section-title">管理记录</div>';
+      html += '<p style="color:var(--text-light);font-size:13px;margin-bottom:12px;">批量删除现有测试记录（source=regular）</p>';
+      html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteAllRecords()">删除所有 regular 记录</button>';
+      html += '<span id="delete-records-result" style="margin-left:12px;font-size:13px;"></span>';
 
       // ── 自动全量备份配置 ──
       html += '<hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">';
@@ -1286,7 +1300,9 @@
           showFlash('无效的备份文件：缺少 test_records', 'error', 'backup-flash');
           return;
         }
-        if (!confirm('确定要从备份文件恢复数据吗？\n共 ' + data.test_records.length + ' 条记录，' + (data.tester_nicknames || []).length + ' 条昵称。\n已存在的记录 ID 会被跳过。')) return;
+        var replaceMode = document.getElementById('backup-replace-check').checked;
+        if (!confirm('确定要从备份文件恢复数据吗？\n共 ' + data.test_records.length + ' 条记录，' + (data.tester_nicknames || []).length + ' 条昵称。' + (replaceMode ? '\n覆盖模式：会先删除现有记录再恢复。' : '\n追加模式：已存在的记录 ID 会被跳过。'))) return;
+        data.replace = replaceMode;
         var result = await api.adminBackupRestore(data);
         showFlash('恢复完成：' + result.restored_records + ' 条记录，' + result.restored_nicknames + ' 条昵称', 'success', 'backup-flash');
         // Refresh the backup tab
@@ -1294,6 +1310,29 @@
       } catch (e) {
         showFlash('恢复失败: ' + e.message, 'error', 'backup-flash');
       }
+    }
+
+    async function deleteAllRecords() {
+      if (!confirm('确定要删除所有 regular 测试记录吗？此操作不可撤销。')) return;
+      var pw = prompt('请输入管理员密码确认：');
+      if (!pw) return;
+      var btn = document.querySelector('[onclick="deleteAllRecords()"]');
+      if (btn) btn.textContent = '删除中...';
+      try {
+        var records = await api.adminExport();
+        var ids = records.map(function(r) { return r.record_id; });
+        if (ids.length === 0) {
+          document.getElementById('delete-records-result').textContent = '没有记录需要删除';
+          if (btn) btn.textContent = '删除所有 regular 记录';
+          return;
+        }
+        await api.post('/api/admin/records/batch-delete', { record_ids: ids, password: pw });
+        document.getElementById('delete-records-result').textContent = '已删除 ' + ids.length + ' 条记录';
+        loadBackup();
+      } catch (e) {
+        showFlash('删除失败: ' + e.message, 'error', 'backup-flash');
+      }
+      if (btn) btn.textContent = '删除所有 regular 记录';
     }
 
     // ─── Shared ───
