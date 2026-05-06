@@ -389,21 +389,7 @@
       document.getElementById('test-screen').classList.add('hidden');
       document.getElementById('loading-screen').classList.remove('hidden');
 
-      // Submit to local server first (always works)
-      var localToken = null;
-      try {
-        const localR = await fetch('/api/test/pro-submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: answers, total_penalty: 0 })
-        });
-        if (localR.ok) {
-          const localResult = await localR.json();
-          localToken = localResult.real_token;
-        }
-      } catch(e) {}
-
-      // Then try external API for radar scores
+      // Try external API first to get radar scores
       var externalResult = null;
       var externalError = null;
       try {
@@ -417,33 +403,47 @@
           throw new Error(errText || 'HTTP ' + r.status);
         }
         externalResult = await r.json();
-
-        // If external succeeded, update local record with real total_penalty
-        if (externalResult.totalPenalty != null && localToken) {
-          try {
-            await fetch('/api/test/pro-submit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ answers: answers, total_penalty: externalResult.totalPenalty })
-            });
-          } catch(e) {}
-        }
       } catch (e) {
         externalError = e.message;
       }
 
+      // Calculate final score: 4-dimension sum + totalPenalty
+      var totalPenalty = externalResult ? (externalResult.totalPenalty || 0) : 0;
+      var radarScoreSum = 0;
+      if (externalResult) {
+        Object.values(externalResult.radarScores || {}).forEach(function(v) { radarScoreSum += v; });
+      }
+      var finalScore = Math.round((radarScoreSum + totalPenalty) * 10) / 10;
+      var surfaceScore = Math.max(0, Math.round((100 - finalScore) * 10) / 10);
+
+      // Submit to local server once, with correct scores
+      var localToken = null;
+      try {
+        const localR = await fetch('/api/test/pro-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            answers: answers,
+            real_score: finalScore,
+            surface_score: surfaceScore
+          })
+        });
+        if (localR.ok) {
+          const localResult = await localR.json();
+          localToken = localResult.real_token;
+        }
+      } catch(e) {}
+
       document.getElementById('loading-screen').classList.add('hidden');
 
-      // Build result object with whatever we got
       var result = externalResult || {};
-      if (localToken) {
-        result.localToken = localToken;
-      }
+      result.localToken = localToken;
+      result.finalScore = finalScore;
+      result.surfaceScore = surfaceScore;
 
       if (externalResult) {
         renderProResult(result);
       } else {
-        // External failed — show whatever we have
         result.radarScores = {};
         result.totalPenalty = 0;
         renderProResult(result, externalError);
@@ -502,13 +502,37 @@
       if (result.verifyCode) {
         html += '<div class="verify-code">外部验真码：' + escapeHtml(result.verifyCode) + '</div>';
       }
-      // Local verify code
+      // Local verify code with copy button
       if (result.localToken) {
-        html += '<div class="verify-code" style="margin-top:4px;font-weight:500;">本地验真码：<span style="color:#2d2d2d;">' + escapeHtml(result.localToken) + '</span></div>';
-        html += '<div style="text-align:center;margin-top:8px;"><a href="/verify.html" class="btn btn-sm btn-outline" style="font-size:0.85em;" target="_blank">去验真</a></div>';
+        html += '<div class="verify-code" style="margin-top:4px;font-weight:500;">本地验真码：<span id="local-token" style="color:#2d2d2d;">' + escapeHtml(result.localToken) + '</span>';
+        html += ' <button onclick="copyToken()" style="border:none;background:#2d2d2d;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:0.85em;vertical-align:middle;">复制</button>';
+        html += '</div>';
+        html += '<div style="text-align:center;margin-top:8px;">';
+        html += '<a href="/verify.html" class="btn btn-sm btn-outline" style="font-size:0.85em;" target="_blank">去验真</a>';
+        html += '</div>';
+      }
+      // Final score summary
+      if (result.finalScore != null) {
+        html += '<div class="result-meta" style="margin-top:12px;">';
+        html += '<div class="meta-item"><div class="val">' + result.finalScore.toFixed(1) + '</div><div class="lbl">综合得分</div></div>';
+        if (result.surfaceScore != null) {
+          html += '<div class="meta-item"><div class="val">' + result.surfaceScore.toFixed(1) + '</div><div class="lbl">表面分</div></div>';
+        }
+        html += '</div>';
       }
 
       document.getElementById('result-content').innerHTML = html;
+    }
+
+    function copyToken() {
+      var token = document.getElementById('local-token').textContent;
+      navigator.clipboard.writeText(token).then(function() {
+        var btn = event.target;
+        var orig = btn.textContent;
+        btn.textContent = '已复制';
+        btn.style.background = '#28a745';
+        setTimeout(function() { btn.textContent = orig; btn.style.background = '#2d2d2d'; }, 1500);
+      });
     }
 
     function escapeHtml(str) {

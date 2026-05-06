@@ -963,13 +963,14 @@ def handle_pro_submit(headers, body):
     if not answers:
         return error_response("No answers provided")
     rid = uuid.uuid4().hex[:8]
-    real_score = body.get("total_penalty", 0)
+    real_score = body.get("real_score", 0)
+    surface_score = body.get("surface_score", 0)
     token = generate_token(rid, real_score)
     conn = get_db()
     try:
         conn.execute(
             "INSERT INTO test_records (id, answers, surface_score, real_score, token, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (rid, json.dumps(answers, ensure_ascii=False), 0, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+            (rid, json.dumps(answers, ensure_ascii=False), surface_score, real_score, token, datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
         )
         conn.commit()
         return json_response({
