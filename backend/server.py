@@ -1059,7 +1059,7 @@ def handle_get_complaints(headers):
         # Get all unique question_ids that have complaints, with counts
         rows = conn.execute(
             "SELECT qs.question_id, COUNT(*) as cnt, q.content as q_content "
-            "FROM question_skips qs JOIN questions q ON qs.question_id = q.id "
+            "FROM question_skips qs LEFT JOIN questions q ON qs.question_id = q.id "
             "WHERE qs.reason = 'complaint' "
             "GROUP BY qs.question_id, q.content "
             "ORDER BY cnt DESC"

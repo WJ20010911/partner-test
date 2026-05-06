@@ -387,27 +387,34 @@
     }
 
     async function renderProComplaintsSection(target) {
-      var data = await fetchProJson('/api/match/complaints');
-      var items = (data.grouped_complaints || []).sort(function(a, b) { return b.complaintCount - a.complaintCount; });
+      var data;
+      try {
+        data = await api.getComplaints();
+      } catch (e) {
+        target.innerHTML = '<p style="color:#721c24;text-align:center;">加载投诉失败: ' + escapeHtml(e.message) + '</p>';
+        return;
+      }
+      var items = (data || []).sort(function(a, b) { return b.complaint_count - a.complaint_count; });
       if (!items.length) {
-        target.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无 Pro 投诉题</p>';
+        target.innerHTML = '<p style="color:var(--text-light);text-align:center;">暂无投诉题</p>';
         return;
       }
 
+      var totalCnt = items.reduce(function(s, c) { return s + c.complaint_count; }, 0);
       var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-      html += '<div class="section-title" style="color:#000;margin:0;">Pro 投诉题</div>';
-      html += '<span style="font-size:13px;color:var(--text-light);">共 ' + (data.total_complaints || 0) + ' 次投诉，' + items.length + ' 道题</span>';
+      html += '<div class="section-title" style="color:#000;margin:0;">投诉题</div>';
+      html += '<span style="font-size:13px;color:var(--text-light);">共 ' + totalCnt + ' 次投诉，' + items.length + ' 道题</span>';
       html += '<button class="btn btn-sm btn-outline" style="border-color:#000;color:#000;margin-left:auto;" onclick="loadProSection(\'complaints\')">刷新</button>';
       html += '</div>';
 
       items.forEach(function(c) {
-        var time = new Date(c.latestComplaint).toLocaleString('zh-CN');
+        var label = c.question_content || c.question_id || '-';
         html += '<div class="complaint-card high-risk">';
         html += '<div class="complaint-header"><div class="complaint-body">';
-        html += '<div class="qtext">' + escapeHtml(c.questionContent || c.questionId || '-') + '</div>';
+        html += '<div class="qtext">' + escapeHtml(label) + '</div>';
         html += '<div class="complaint-meta">';
-        html += '<span><span class="badge badge-danger">' + c.complaintCount + ' 次</span></span>';
-        html += '<span>最近 ' + time + '</span>';
+        html += '<span><span class="badge badge-danger">' + c.complaint_count + ' 次</span></span>';
+        html += '<span>回答率 ' + (c.answered_count || 0) + ' 次</span>';
         html += '</div></div></div></div>';
       });
       target.innerHTML = html;

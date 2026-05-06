@@ -340,11 +340,21 @@
     async function skipQuestion(isComplaint) {
       clearTimer();
       const timeTaken = (Date.now() - questionStartTime) / 1000;
+      var qid = proQuestions[currentIdx].id;
       answers.push({
-        questionId: proQuestions[currentIdx].id,
+        questionId: qid,
         selectedIndex: isComplaint ? -3 : -2,
         timeTakenSeconds: timeTaken
       });
+
+      if (isComplaint) {
+        // Also record the complaint to the local server
+        fetch('/api/test/skip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question_id: qid, reason: 'complaint' })
+        }).catch(function(e) {});
+      }
 
       try {
         const replacement = await fetchReplacementQuestion();
