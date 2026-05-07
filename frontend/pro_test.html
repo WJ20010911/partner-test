@@ -430,24 +430,45 @@
       document.getElementById('result-screen').classList.remove('hidden');
 
       let html = '';
+      var radar = result.radarScores || {};
 
-      // Two-score summary card
-      html += '<div style="background:#f8f9fa;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;">';
-      html += '<div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">';
-      html += '<div><div style="font-size:2.2em;font-weight:700;color:#2d2d2d;">' + (result.finalScore != null ? result.finalScore.toFixed(1) : '0.0') + '</div>';
-      html += '<div style="font-size:0.85em;color:#888;margin-top:4px;">四维总分</div></div>';
-      html += '<div><div style="font-size:2.2em;font-weight:700;color:#e88d9e;">' + (result.totalPenalty || 0).toFixed(1) + '</div>';
-      html += '<div style="font-size:0.85em;color:#888;margin-top:4px;">扣分</div></div>';
+      // First row: 4 dimension scores with color
+      var dims = [
+        { key: 'Friction',     label: '摩擦' },
+        { key: 'Reality',      label: '现实' },
+        { key: 'Empathy',      label: '共情' },
+        { key: 'CommonSense',  label: '常识' }
+      ];
+      html += '<div style="background:#f8f9fa;border-radius:12px;padding:20px;text-align:center;margin-bottom:12px;">';
+      html += '<div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">';
+      dims.forEach(function(d) {
+        var score = radar[d.key];
+        var val;
+        if (score == null) { val = '-'; } else { val = Math.round(score * 100) / 100; }
+        var color;
+        if (typeof val === 'number') {
+          if (val < 10) color = '#f0ad4e';
+          else if (val <= 25) color = '#28a745';
+          else color = '#c62828';
+        } else {
+          color = '#999';
+        }
+        html += '<div>';
+        html += '<div style="font-size:0.75em;color:#888;margin-bottom:2px;">' + d.label + '</div>';
+        html += '<div style="font-size:2em;font-weight:700;color:' + color + ';">' + val + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
       html += '</div>';
 
-      if (externalError) {
-        html += '<div style="margin-top:12px;font-size:0.8em;color:#856404;">⚠ 外部评分暂不可用</div>';
-      } else {
-        html += '<div style="margin-top:12px;">';
-        html += '<span style="display:inline-block;padding:4px 20px;border-radius:20px;font-size:0.9em;font-weight:600;';
-        html += result.isFlagged ? 'background:#fce4ec;color:#c62828;">无效' : 'background:#e8f5e9;color:#2e7d32;">有效';
-        html += '</span></div>';
-      }
+      // Second row: total score + penalty
+      html += '<div style="background:#f8f9fa;border-radius:12px;padding:16px;text-align:center;margin-bottom:20px;">';
+      html += '<div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">';
+      html += '<div><div style="font-size:1.6em;font-weight:700;color:#2d2d2d;">' + (result.finalScore != null ? result.finalScore.toFixed(1) : '0.0') + '</div>';
+      html += '<div style="font-size:0.75em;color:#888;margin-top:2px;">四维总分</div></div>';
+      html += '<div><div style="font-size:1.6em;font-weight:700;color:#e88d9e;">' + (result.totalPenalty || 0).toFixed(1) + '</div>';
+      html += '<div style="font-size:0.75em;color:#888;margin-top:2px;">扣分</div></div>';
+      html += '</div>';
       html += '</div>';
 
       // Verify code card
