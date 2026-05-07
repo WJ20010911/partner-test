@@ -46,8 +46,25 @@
   </nav>
 
   <div class="container test-container">
+    <!-- Start Screen -->
+    <div id="start-screen" class="card" style="text-align:center;padding:40px 20px;">
+      <h2 style="color:var(--primary-dark);margin-bottom:16px;">准备好了吗？</h2>
+      <p style="color:var(--text-light);margin-bottom:16px;">
+        你会遇到一些情景题，请凭第一感觉选择答案。<br>
+      </p>
+      <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
+        <strong>📖 操作说明</strong><br>
+        <strong>当前题库共 <span id="bank-count">--</span> 道题</strong>，每次随机抽取部分题目作答。<br><br>
+        · <strong>跳过</strong> — 这道题不适合你，换一道类似的题继续。<br>
+        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br>
+        · <strong>延长 5 秒</strong> — 倒计时快结束时可使用，每道题最多加 3 次。<br><br>
+        欢迎点击右上角「上传题库」来贡献题目，一起让测试更丰富、更有参考价值。
+      </div>
+      <button class="btn btn-primary" onclick="startTest()">开始答题</button>
+    </div>
+
     <!-- Loading -->
-    <div id="loading-screen" class="card" style="text-align:center;padding:60px 20px;">
+    <div id="loading-screen" class="card hidden" style="text-align:center;padding:60px 20px;">
       <p style="color:var(--text-light);">加载题目中...</p>
     </div>
 
@@ -65,7 +82,8 @@
         <div id="options-list"></div>
         <div class="action-row">
           <button class="btn btn-outline btn-sm" onclick="handleSkip()">跳过</button>
-          <button class="btn btn-outline btn-sm" onclick="handleComplaint()" style="color:#e88d9e;border-color:#e88d9e;">投诉</button>
+          <button class="btn btn-outline btn-sm" id="extend-btn" onclick="extendTime()" style="border-color:#ffa726;color:#ffa726;" disabled>延长 5 秒 <span id="extend-count">0/3</span></button>
+          <button class="btn btn-outline btn-sm" onclick="handleComplaint()" style="color:#e88d9e;border-color:#e88d9e;">投诉并跳过</button>
           <button class="btn btn-primary" id="next-btn" onclick="handleNext()" disabled>下一题</button>
         </div>
       </div>
@@ -110,8 +128,20 @@
     var timerRemaining = 0;
     var timerLimit = 0;
     var questionStartTime = 0;
+    var extendCount = 0;
+    var MAX_EXTENDS = 3;
 
-    (async function init() {
+    // Fetch bank count on page load
+    (async function() {
+      try {
+        var s = await api.getPublicStats();
+        document.getElementById('bank-count').textContent = s.question_count || '--';
+      } catch(e) {}
+    })();
+
+    async function startTest() {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('loading-screen').classList.remove('hidden');
       try {
         questions = await api.getQuestions(12);
         if (!questions.length) throw new Error('题库为空，请联系管理员添加题目');
@@ -121,10 +151,10 @@
         renderQuestion();
       } catch (e) {
         document.getElementById('loading-screen').classList.add('hidden');
-        document.getElementById('error-screen').classList.remove('hidden');
-        document.getElementById('error-msg').textContent = '加载题目失败: ' + e.message;
+        document.getElementById('start-screen').classList.remove('hidden');
+        alert('加载题目失败: ' + e.message);
       }
-    })();
+    }
 
     function clearTimer() {
       if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
@@ -160,6 +190,12 @@
       document.getElementById('next-btn').disabled = true;
 
       // Timer
+      extendCount = 0;
+      var extBtn = document.getElementById('extend-btn');
+      extBtn.disabled = true;
+      extBtn.style.opacity = '0.5';
+      document.getElementById('extend-count').textContent = '0/3';
+
       if (q.time_limit && q.time_limit > 0) {
         timerRemaining = q.time_limit;
         timerLimit = q.time_limit;
@@ -171,6 +207,17 @@
 
         timerInterval = setInterval(function() {
           timerRemaining--;
+          // Handle extend button state
+          var eBtn = document.getElementById('extend-btn');
+          var eCnt = document.getElementById('extend-count');
+          if (timerRemaining <= 5 && extendCount < MAX_EXTENDS) {
+            eBtn.disabled = false;
+            eBtn.style.opacity = '1';
+          } else {
+            eBtn.disabled = true;
+            eBtn.style.opacity = '0.5';
+          }
+          eCnt.textContent = extendCount + '/3';
           document.getElementById('timer-bar').style.width = Math.max(0, timerRemaining / timerLimit * 100) + '%';
           if (timerRemaining <= 0) {
             clearInterval(timerInterval);
@@ -190,12 +237,23 @@
       document.getElementById('next-btn').disabled = false;
     }
 
+    function extendTime() {
+      if (extendCount >= MAX_EXTENDS || timerRemaining <= 0) return;
+      extendCount++;
+      timerRemaining += 5;
+      var eBtn = document.getElementById('extend-btn');
+      eBtn.disabled = true;
+      eBtn.style.opacity = '0.5';
+      document.getElementById('extend-count').textContent = extendCount + '/3';
+    }
+
     function forceNext(timeout) {
       var optIndex = timeout ? -1 : selectedOption;
       var timeTaken = (Date.now() - questionStartTime) / 1000;
       var q = questions[currentIdx];
       answers.push({ question_id: q.id, selected_index: optIndex, time_taken: timeTaken, behavior: timeout ? 'timeout' : 'normal' });
       currentIdx++;
+      clearTimer();
       if (currentIdx >= questions.length) {
         submitAnswers();
       } else {
