@@ -513,7 +513,12 @@
     async function deleteProComplaintRecord(qid) {
       if (!confirm('确定要清除题目 "' + escapeHtml(qid) + '" 的所有投诉记录吗？')) return;
       try {
-        var res = await api.clearComplaints(qid);
+        var res = await fetch('/api/questions/complaints/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question_id: qid })
+        });
+        if (!res.ok) throw new Error((await res.json()).detail || 'HTTP ' + res.status);
         showFlash('已清除投诉记录', 'success');
         loadProSection('complaints');
       } catch (e) {
