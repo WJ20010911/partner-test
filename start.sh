@@ -1,2 +1,2 @@
 #!/bin/bash
-python backend/server.py
+python3 backend/server.py
