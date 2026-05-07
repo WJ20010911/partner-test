@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理后台 - 伴侣匹配测试</title>
   <link rel="stylesheet" href="/css/style.css?v=2">
+  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={purple:{p:'#8b5cf6',d:'#6d28d9'},blue:{p:'#3b82f6',d:'#1d4ed8'},green:{p:'#22c55e',d:'#16a34a'},red:{p:'#ef4444',d:'#dc2626'},pink:{p:'#ec4899',d:'#db2777'},orange:{p:'#f97316',d:'#ea580c'},teal:{p:'#14b8a6',d:'#0d9488'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
   <style>
     .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
     .stat-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; }
@@ -1346,7 +1347,29 @@
     // ─── Settings ───
     async function loadSettings() {
       var container = document.getElementById('admin-content');
-      var html = '<div class="section-title">修改管理员密码</div>';
+      var currentTheme = localStorage.getItem('theme') || 'purple';
+      var html = '<div class="section-title">网站主色调</div>';
+      html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">';
+      var themeList = [
+        {id:'purple', label:'紫色', primary:'#8b5cf6', dark:'#6d28d9'},
+        {id:'blue',   label:'蓝色', primary:'#3b82f6', dark:'#1d4ed8'},
+        {id:'green',  label:'绿色', primary:'#22c55e', dark:'#16a34a'},
+        {id:'red',    label:'红色', primary:'#ef4444', dark:'#dc2626'},
+        {id:'pink',   label:'粉色', primary:'#ec4899', dark:'#db2777'},
+        {id:'orange', label:'橙色', primary:'#f97316', dark:'#ea580c'},
+        {id:'teal',   label:'青色', primary:'#14b8a6', dark:'#0d9488'},
+      ];
+      for (var i = 0; i < themeList.length; i++) {
+        var t = themeList[i];
+        var active = currentTheme === t.id ? ' active' : '';
+        html += '<div onclick="setTheme(\'' + t.id + '\')" style="cursor:pointer;text-align:center;padding:8px;border:2px solid ' + (active ? t.primary : '#ddd') + ';border-radius:8px;background:' + (active ? '#f5f3ff' : '#fff') + ';min-width:60px;">';
+        html += '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,' + t.primary + ',' + t.dark + ');margin:0 auto 4px;"></div>';
+        html += '<div style="font-size:12px;color:var(--text);">' + t.label + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+
+      html += '<div class="section-title">修改管理员密码</div>';
       html += '<div class="settings-form">';
       html += '<label>旧密码</label>';
       html += '<input type="password" id="set-old-pw" placeholder="输入旧密码">';
@@ -1385,6 +1408,21 @@
       } catch (e) {
         showFlash(e.message, 'error');
       }
+    }
+
+    function setTheme(id) {
+      var colors = {
+        purple:{p:'#8b5cf6',d:'#6d28d9'},blue:{p:'#3b82f6',d:'#1d4ed8'},
+        green:{p:'#22c55e',d:'#16a34a'},red:{p:'#ef4444',d:'#dc2626'},
+        pink:{p:'#ec4899',d:'#db2777'},orange:{p:'#f97316',d:'#ea580c'},
+        teal:{p:'#14b8a6',d:'#0d9488'},
+      };
+      var c = colors[id];
+      if (!c) return;
+      document.documentElement.style.setProperty('--primary', c.p);
+      document.documentElement.style.setProperty('--primary-dark', c.d);
+      localStorage.setItem('theme', id);
+      loadSettings();
     }
 
     async function exportData() {
