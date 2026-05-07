@@ -8,6 +8,7 @@
   <script>!function(){var t=localStorage.getItem('theme');if(t){var m={purple:{p:'#8b5cf6',d:'#6d28d9'},blue:{p:'#3b82f6',d:'#1d4ed8'},green:{p:'#22c55e',d:'#16a34a'},red:{p:'#ef4444',d:'#dc2626'},pink:{p:'#ec4899',d:'#db2777'},orange:{p:'#f97316',d:'#ea580c'},teal:{p:'#14b8a6',d:'#0d9488'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
   <style>
     .auth-container { max-width: 420px; margin: 0 auto; }
+    .upload-container { max-width: 680px; margin: 0 auto; }
     .tab-row { display: flex; gap: 0; margin-bottom: 24px; }
     .tab-btn {
       flex: 1; padding: 10px; border: none; background: #f0f0f0;
@@ -20,11 +21,21 @@
     .form-group label { display: block; margin-bottom: 4px; color: var(--text-light); font-size: 0.9em; }
     .form-group input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 1em; }
     .form-group input:focus { outline: none; border-color: var(--primary); }
+    .form-group textarea { font-family: inherit; }
     .submit-btn { width: 100%; padding: 12px; font-size: 1em; }
     .form-msg { text-align: center; margin-top: 12px; font-size: 0.9em; }
     .form-msg.error { color: #e88d9e; }
     .form-msg.success { color: #28a745; }
     .info-card { margin-bottom: 20px; }
+
+    /* ── Upload form styles ── */
+    .form-input { width:100%; padding:10px 14px; font-size:14px; border:1px solid var(--border); border-radius:8px; outline:none; transition:border-color 0.2s; box-sizing:border-box; font-family:inherit; }
+    .form-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(139,92,246,0.1); }
+    .dimension-hint { margin-top:8px; padding:10px 14px; background:#f0f7ff; border:1px solid #d4e3f7; border-radius:8px; font-size:13px; line-height:1.6; color:var(--text); display:none; }
+    .dimension-hint.show { display:block; }
+    .toggle-link { color:var(--primary-dark); cursor:pointer; font-size:13px; text-decoration:underline; }
+    .toggle-link:hover { color:var(--primary); }
+    .upload-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
   </style>
 </head>
 <body>
@@ -192,91 +203,171 @@
     function showUploadForm() {
       var section = document.getElementById('upload-section');
       section.classList.remove('hidden');
+      expandUpload();
       buildUploadUI();
+    }
+
+    function expandUpload() {
+      var container = document.querySelector('.container');
+      if (container) container.classList.remove('auth-container');
     }
 
     function buildUploadUI() {
       var section = document.getElementById('upload-section');
       section.innerHTML = '\
-        <h4 style="color:var(--primary-dark);margin-bottom:12px;">提交新题目</h4>\
-        <div class="form-group">\
-          <label>题干</label>\
-          <textarea id="q-content" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.95em;" placeholder="请输入题目内容"></textarea>\
-        </div>\
-        <div class="form-group">\
-          <label>选项（每行一个，格式：分数 | 选项文本）</label>\
-          <textarea id="q-options" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.9em;" placeholder="例：&#10;10 | 选项A描述&#10;5 | 选项B描述&#10;0 | 选项C描述"></textarea>\
-        </div>\
-        <div class="form-group">\
-          <label>标签（逗号分隔，可选）</label>\
-          <input type="text" id="q-tags" placeholder="爱情观, 价值观" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
-        </div>\
-        <div style="display:flex;gap:12px;margin-bottom:16px;">\
-          <div class="form-group" style="flex:1;">\
-            <label>维度（可选）</label>\
-            <input type="text" id="q-dimension" placeholder="如: 信任" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+        <div class="upload-card">\
+          <h4 style="color:var(--primary-dark);margin-bottom:16px;">提交新题目</h4>\
+          <div class="warning-box" style="background:#fff3cd;border:1px solid #ffeeba;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:0.9em;color:#856404;">\
+            <strong>⚠️ 注意：分数是反着给的</strong><br>\
+            最正确的选项应填在 <strong>0 分</strong>（得分最低），<br>\
+            最离谱/最不理想的选项应填在 <strong>5 分</strong>（得分最高），<br>\
+            分值 0~5 共 6 档，每题最少 <strong>4 个选项</strong>、最多 <strong>6 个选项</strong>。旨在麻痹做题人，防止猜出真实评分逻辑。\
           </div>\
-          <div class="form-group" style="flex:1;">\
-            <label>权重 (1-3)</label>\
-            <input type="number" id="q-weight" value="1" min="1" max="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+          <div class="form-group">\
+            <label>题干</label>\
+            <textarea id="q-content" class="form-input" rows="3" placeholder="描述一个场景或问题..."></textarea>\
           </div>\
-          <div class="form-group" style="flex:1;">\
-            <label>限时(秒,0=不限)</label>\
-            <input type="number" id="q-time-limit" value="0" min="0" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+          <div class="form-group">\
+            <label>题目分类</label>\
+            <select id="q-dimension" class="form-input">\
+              <option value="">—— 选择分类 ——</option>\
+              <option value="常识与思维弹性">常识与思维弹性</option>\
+              <option value="人性底线与共情基准">人性底线与共情基准</option>\
+              <option value="日常摩擦中的本能反应">日常摩擦中的本能反应</option>\
+              <option value=\'对"关系现实感"的认知\'>对"关系现实感"的认知</option>\
+              <option value="其他">其他</option>\
+            </select>\
+            <div id="dimension-desc" class="dimension-hint">\
+              <span style="color:var(--text-light);font-style:italic;">请选择一个分类查看说明</span>\
+            </div>\
           </div>\
+          <div id="options-container">\
+            <div class="form-group">\
+              <label>0 分选项（最正确 — 得分最低）</label>\
+              <input type="text" class="form-input option-text" placeholder="最正确的反应（0分）" data-opt="0">\
+            </div>\
+            <div class="form-group">\
+              <label>1 分选项</label>\
+              <input type="text" class="form-input option-text" placeholder="轻微的副作用" data-opt="1">\
+            </div>\
+            <div class="form-group">\
+              <label>2 分选项</label>\
+              <input type="text" class="form-input option-text" placeholder="较不理想的反应" data-opt="2">\
+            </div>\
+            <div class="form-group">\
+              <label>3 分选项</label>\
+              <input type="text" class="form-input option-text" placeholder="不理想的反应" data-opt="3">\
+            </div>\
+            <div class="form-group extra-opt" style="display:none;">\
+              <label>4 分选项</label>\
+              <input type="text" class="form-input option-text" placeholder="较严重的不理想反应" data-opt="4">\
+            </div>\
+            <div class="form-group">\
+              <label>5 分选项（最离谱 — 得分最高）</label>\
+              <input type="text" class="form-input option-text" placeholder="最离谱的反应（5分）" data-opt="5">\
+            </div>\
+            <div style="margin-top:4px;font-size:13px;color:var(--text-light);">\
+              <span class="toggle-link" id="toggle-extra-opts" onclick="toggleExtraOpts()">+ 添加第 5 个选项</span>\
+              <span style="margin:0 8px;color:var(--border);">|</span>\
+              <span style="font-size:12px;">至少 4 个，最多 6 个</span>\
+            </div>\
+          </div>\
+          <div class="form-group">\
+            <label>答题时限（秒）</label>\
+            <input type="number" id="q-time-limit" class="form-input" value="15" min="10" max="60" style="max-width:120px;">\
+            <span style="color:var(--text-light);font-size:0.85em;">最短 10 秒，最长 60 秒</span>\
+          </div>\
+          <div class="form-group">\
+            <label>题目权重</label>\
+            <div style="display:flex;gap:12px;">\
+              <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;font-weight:400;">\
+                <input type="radio" name="q-weight" value="1" checked> 普通题（×1）\
+              </label>\
+              <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;font-weight:400;">\
+                <input type="radio" name="q-weight" value="2"> 重要题（×2）\
+              </label>\
+              <label style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:14px;font-weight:400;">\
+                <input type="radio" name="q-weight" value="3"> 核心题（×3）\
+              </label>\
+            </div>\
+            <span style="color:var(--text-light);font-size:0.85em;">权重越大，该题对最终分数的影响越大</span>\
+          </div>\
+          <div class="form-group">\
+            <label>标签（用逗号分隔，可选）</label>\
+            <input type="text" id="q-tags" class="form-input" placeholder="例如: 情感, 物质, 独立">\
+          </div>\
+          <button class="btn btn-primary btn-block" onclick="submitUpload()">提交审核</button>\
+          <div id="upload-msg" class="form-msg" style="margin-top:8px;"></div>\
         </div>\
-        <button class="btn btn-primary" onclick="submitUpload()" style="width:100%;">提交题目</button>\
-        <div id="upload-msg" class="form-msg" style="margin-top:8px;"></div>\
       ';
+      // Attach dimension change listener
+      document.getElementById('q-dimension').addEventListener('change', onDimensionChange);
+    }
+
+    // Dimension descriptions
+    var dimDescs = {
+      "常识与思维弹性": "考察生活常识、逻辑反诈意识、思维变通能力和抓大放小的判断力。",
+      "人性底线与共情基准": "考察对暴力、霸凌、隐私权、身体自主权等基本人道的立场，以及对社会弱者的共情能力。",
+      "日常摩擦中的本能反应": "模拟日常相处中的分歧、失误、疏忽等场景，考察情绪管理、包容度与沟通模式。",
+      "对\"关系现实感\"的认知": "考察对长期关系中的平淡期、衰老、财务压力、责任分担等现实维度的认知成熟度。"
+    };
+    function onDimensionChange() {
+      var box = document.getElementById("dimension-desc");
+      var desc = dimDescs[this.value];
+      if (desc) {
+        box.innerHTML = "<strong>" + this.value + "</strong> — " + desc;
+        box.classList.add("show");
+      } else {
+        box.innerHTML = "<span style=\"color:var(--text-light);font-style:italic;\">请选择一个分类查看说明</span>";
+        box.classList.remove("show");
+      }
+    }
+
+    // Toggle extra option (4分 / 5th option)
+    var extraOptVisible = false;
+    function toggleExtraOpts() {
+      extraOptVisible = !extraOptVisible;
+      var el = document.querySelector(".extra-opt");
+      var link = document.getElementById("toggle-extra-opts");
+      if (!el) return;
+      el.style.display = extraOptVisible ? "" : "none";
+      link.textContent = extraOptVisible ? "− 移除第 5 个选项" : "+ 添加第 5 个选项";
     }
 
     async function submitUpload() {
-      var content = document.getElementById('q-content').value.trim();
-      var optionsText = document.getElementById('q-options').value.trim();
-      var tagsText = document.getElementById('q-tags').value.trim();
-      var dimension = document.getElementById('q-dimension').value.trim();
-      var weight = parseInt(document.getElementById('q-weight').value) || 1;
-      var timeLimit = parseInt(document.getElementById('q-time-limit').value) || 0;
-      var msg = document.getElementById('upload-msg');
-      msg.className = 'form-msg';
-      msg.textContent = '';
+      var content = document.getElementById("q-content").value.trim();
+      if (!content) { showFlash("请输入题干", "error"); return; }
 
-      if (!content) { msg.className = 'form-msg error'; msg.textContent = '请填写题目内容'; return; }
-      if (!optionsText) { msg.className = 'form-msg error'; msg.textContent = '请填写选项'; return; }
-
+      var opts = document.querySelectorAll(".option-text");
       var options = [];
-      var lines = optionsText.split('\n');
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) continue;
-        var parts = line.split('|');
-        if (parts.length < 2) { msg.className = 'form-msg error'; msg.textContent = '选项格式错误，每行应为 "分数 | 文本"'; return; }
-        var score = parseFloat(parts[0].trim());
-        if (isNaN(score)) { msg.className = 'form-msg error'; msg.textContent = '选项分数无效: ' + parts[0]; return; }
-        options.push({ score: score, text: parts.slice(1).join('|').trim() });
-      }
-      if (options.length < 2) { msg.className = 'form-msg error'; msg.textContent = '至少需要 2 个选项'; return; }
+      opts.forEach(function(o) {
+        if (o.value.trim()) options.push({ text: o.value.trim(), score: parseInt(o.dataset.opt) });
+      });
+      if (options.length < 4) { showFlash("请至少填写 4 个选项（最多 6 个）", "error"); return; }
+      if (options.length > 6) { showFlash("最多只能 6 个选项", "error"); return; }
 
-      var tags = tagsText ? tagsText.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+      var dimension = document.getElementById("q-dimension").value || null;
+      var timeLimit = parseInt(document.getElementById("q-time-limit").value) || 15;
+      var tags = document.getElementById("q-tags").value.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
+      var weightEl = document.querySelector("input[name=\"q-weight\"]:checked");
+      var weight = weightEl ? parseInt(weightEl.value) : 1;
+      if (![1, 2, 3].includes(weight)) weight = 1;
 
       try {
         var result = await api.submitQuestion({
           content: content,
           options: options,
+          dimension: dimension,
           tags: tags,
-          dimension: dimension || null,
-          weight: Math.min(3, Math.max(1, weight)),
-          time_limit: Math.max(0, timeLimit || 0)
+          time_limit: timeLimit,
+          weight: weight
         });
-        msg.className = 'form-msg success';
-        msg.textContent = '题目已提交！ID: ' + result.id + '，等待管理员审核。';
-        // Clear form
-        document.getElementById('q-content').value = '';
-        document.getElementById('q-options').value = '';
-        document.getElementById('q-tags').value = '';
+        showFlash("提交成功，ID: " + result.id + "，等待管理员审核", "success");
+        document.getElementById("q-content").value = "";
+        document.querySelectorAll(".option-text").forEach(function(o) { o.value = ""; });
+        document.getElementById("q-tags").value = "";
       } catch (e) {
-        msg.className = 'form-msg error';
-        msg.textContent = e.message || '提交失败';
+        showFlash("提交失败: " + e.message, "error");
       }
     }
 
@@ -334,6 +425,17 @@
           alert('提交失败: ' + e.message);
         }
       };
+    }
+
+    // ── Local flash message helper ──
+    function showFlash(msg, type) {
+      var el = document.getElementById('upload-msg');
+      if (!el) return;
+      el.className = 'form-msg';
+      el.textContent = '';
+      if (type === 'error') el.className = 'form-msg error';
+      else if (type === 'success') el.className = 'form-msg success';
+      el.textContent = msg;
     }
   </script>
 </body>
