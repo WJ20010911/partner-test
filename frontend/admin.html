@@ -314,6 +314,16 @@
 
     // uploadProQuestionFile removed (superseded by uploadProQuestionsJson)
 
+    function renderProDimStat(label, val) {
+      var color = '#000';
+      if (typeof val === 'number') {
+        if (val < 10) color = '#f0ad4e';
+        else if (val <= 25) color = '#28a745';
+        else color = '#c62828';
+      }
+      return '<div class="stat-card" style="padding:10px;border-color:#000;"><div class="num" style="font-size:20px;color:' + color + ';">' + val + '</div><div class="label">' + label + '</div></div>';
+    }
+
     async function renderProRecordsSection(target) {
       var data = await fetchProJson('/api/match/records');
       var records = data.records || [];
@@ -329,21 +339,50 @@
         return;
       }
 
+      // Overview stats
+      var total = records.length;
+      var validCount = 0, invalidCount = 0;
+      var totalScores = [], totalPenalties = [];
+      records.forEach(function(rec) {
+        var s = (rec.scoreCommonSense || 0) + (rec.scoreEmpathy || 0) + (rec.scoreFriction || 0) + (rec.scoreReality || 0);
+        totalScores.push(s);
+        totalPenalties.push(rec.penaltyScore || 0);
+        if (rec.isFlagged) invalidCount++; else validCount++;
+      });
+      totalScores.sort(function(a,b){return a-b;});
+      totalPenalties.sort(function(a,b){return a-b;});
+      var avgScore = totalScores.reduce(function(a,b){return a+b;},0) / total;
+      var avgPenalty = totalPenalties.reduce(function(a,b){return a+b;},0) / total;
+
+      html += '<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#28a745;">' + totalScores[totalScores.length-1].toFixed(1) + '</div><div class="label">最高总分</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#c62828;">' + totalScores[0].toFixed(1) + '</div><div class="label">最低总分</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + avgScore.toFixed(1) + '</div><div class="label">平均总分</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + avgPenalty.toFixed(1) + '</div><div class="label">平均扣分</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#e88d9e;">' + totalPenalties[totalPenalties.length-1].toFixed(1) + '</div><div class="label">最高扣分</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#000;">' + totalPenalties[0].toFixed(1) + '</div><div class="label">最低扣分</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#28a745;">' + validCount + '</div><div class="label">有效成绩</div></div>';
+      html += '<div class="stat-card" style="border-color:#000;"><div class="num" style="color:#c62828;">' + invalidCount + '</div><div class="label">无效成绩</div></div>';
+      html += '</div>';
+
       html += '<div class="section-title" style="color:#000;">测试记录</div>';
       records.forEach(function(rec) {
         var details = normalizeProDetails(rec.answerDetails);
-        html += '<div class="card" style="border-color:#000;margin-bottom:14px;">';
+        html += '<div class="card" style="border-color:#000;margin-bottom:14px;" id="pro-rec-' + rec.id + '">';
         html += '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
         html += '<strong style="color:#000;">#' + rec.id + ' · ' + escapeHtml(rec.verifyCode || '-') + '</strong>';
         html += '<span style="color:var(--text-light);font-size:13px;">' + (rec.createdAt || '').slice(0,19).replace('T', ' ') + '</span>';
         html += '</div>';
         html += '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">';
-        html += renderProMiniStat('常识', rec.scoreCommonSense != null ? Number(rec.scoreCommonSense).toFixed(1) : '-');
-        html += renderProMiniStat('共情', rec.scoreEmpathy != null ? Number(rec.scoreEmpathy).toFixed(1) : '-');
-        html += renderProMiniStat('摩擦', rec.scoreFriction != null ? Number(rec.scoreFriction).toFixed(1) : '-');
-        html += renderProMiniStat('现实', rec.scoreReality != null ? Number(rec.scoreReality).toFixed(1) : '-');
+        html += renderProDimStat('常识', rec.scoreCommonSense != null ? Number(rec.scoreCommonSense).toFixed(1) : '-');
+        html += renderProDimStat('共情', rec.scoreEmpathy != null ? Number(rec.scoreEmpathy).toFixed(1) : '-');
+        html += renderProDimStat('摩擦', rec.scoreFriction != null ? Number(rec.scoreFriction).toFixed(1) : '-');
+        html += renderProDimStat('现实', rec.scoreReality != null ? Number(rec.scoreReality).toFixed(1) : '-');
         html += renderProMiniStat('异常', rec.penaltyScore != null ? Number(rec.penaltyScore).toFixed(1) : '-');
         html += renderProMiniStat('测谎', rec.isFlagged ? '异常' : '正常');
+        html += '</div>';
+        html += '<div style="display:flex;gap:8px;margin-bottom:8px;">';
+        html += '<button class="btn btn-sm btn-outline" onclick="deleteProRecord(\'' + rec.id + '\')" style="color:#c62828;border-color:#c62828;">删除记录</button>';
         html += '</div>';
         html += '<details><summary style="cursor:pointer;color:#000;font-weight:600;">查看分数细节（' + details.length + ' 题）</summary>';
         html += renderProAnswerDetailsTable(details);
@@ -351,6 +390,21 @@
       });
 
       target.innerHTML = html;
+    }
+
+    async function deleteProRecord(recordId) {
+      if (!confirm('确定删除记录 #' + recordId + '？')) return;
+      try {
+        var r = await fetch('/api/admin/records/batch-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ record_ids: [recordId] })
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        document.getElementById('pro-rec-' + recordId).style.display = 'none';
+      } catch (e) {
+        alert('删除失败: ' + e.message);
+      }
     }
 
     function normalizeProDetails(details) {
