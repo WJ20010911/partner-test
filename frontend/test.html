@@ -92,9 +92,9 @@
     <!-- Result Screen -->
     <div id="result-screen" class="hidden">
       <div class="card" style="text-align:center;padding:40px 20px;">
-        <div class="result-label">你的匹配度得分</div>
+        <div class="result-label">你的伴侣匹配度得分</div>
         <div class="result-score" id="result-score">--</div>
-        <p style="color:var(--text-light);margin-top:8px;font-size:0.9em;">满分 100 分，分数越高越匹配</p>
+        <p style="color:var(--text-light);margin-top:8px;font-size:0.9em;">分数越低越匹配</p>
       </div>
       <div class="result-card" id="verify-card" style="display:none;">
         <p style="color:var(--text-light);font-size:0.9em;margin-bottom:8px;">验真码（可用于验证结果真实性）</p>
@@ -170,9 +170,9 @@
       document.getElementById('progress-fill').style.width = progress + '%';
       document.getElementById('progress-pct').textContent = progress + '%';
 
-      // Tags
-      var tags = q.tags && q.tags.length ? q.tags.join(' · ') : '';
-      document.getElementById('q-tags').textContent = tags;
+      // Tags (hidden in original)
+      // var tags = q.tags && q.tags.length ? q.tags.join(' · ') : '';
+      // document.getElementById('q-tags').textContent = tags;
 
       selectedOption = -1;
       questionStartTime = Date.now();
@@ -294,7 +294,7 @@
         var result = await api.submitTest(answers);
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('result-screen').classList.remove('hidden');
-        document.getElementById('result-score').textContent = result.surface_score;
+        document.getElementById('result-score').textContent = result.real_score;
 
         if (result.real_token) {
           document.getElementById('verify-card').style.display = 'block';
