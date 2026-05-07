@@ -1142,6 +1142,27 @@ def handle_get_complaints(headers, qs=None):
     finally:
         conn.close()
 
+
+def handle_clear_complaint(headers, body):
+    """Delete all complaint skip records for a given question_id."""
+    user, err = require_admin(headers)
+    if err:
+        return err
+    qid = body.get("question_id", "")
+    if not qid:
+        return error_response("No question_id provided", 400)
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM question_skips WHERE question_id = ? AND reason = 'complaint'",
+            (qid,)
+        )
+        conn.commit()
+        return json_response({"status": "cleared", "question_id": qid})
+    finally:
+        conn.close()
+
+
 def handle_delete_question(headers, qid):
     user, err = require_admin(headers)
     if err:
@@ -2176,6 +2197,7 @@ route("GET", r"/api/questions/replacement")(lambda h, b, *a: None)  # handled vi
 route("POST", r"/api/test/skip")(lambda h, b, *a: handle_record_skip(h, b))
 route("POST", r"/api/test/pro-submit")(lambda h, b, *a: handle_pro_submit(h, b))
 route("GET", r"/api/questions/complaints")(lambda h, b, *a: None)  # handled via query params in _handle
+route("POST", r"/api/questions/complaints/clear")(lambda h, b, *a: handle_clear_complaint(h, b))
 route("DELETE", r"/api/questions/([a-f0-9]+)")(lambda h, b, qid: handle_delete_question(h, qid))
 route("GET", r"/api/test/([a-f0-9]+)")(lambda h, b, rid: handle_get_record(h, rid))
 route("POST", r"/api/admin/auth")(lambda h, b, *a: handle_admin_auth(h, b))

@@ -45,6 +45,7 @@ const api = {
   getAllQuestions() { return this.get('/api/questions/all'); },
   reviewQuestion(id, status) { return this.patch(`/api/questions/${id}`, { status }); },
   getComplaints(source) { return this.get('/api/questions/complaints' + (source ? '?source=' + source : '')); },
+  clearComplaints(questionId) { return this.post('/api/questions/complaints/clear', { question_id: questionId }); },
 
   deleteQuestion(id) { return this.request('DELETE', `/api/questions/${id}`); },
 

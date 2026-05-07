@@ -444,6 +444,22 @@
         return;
       }
 
+      // Fetch Pro questions from Railway to build id→content mapping
+      var questionMap = {};
+      try {
+        var proQuestions = await fetchProJson('/api/match/questions/export');
+        proQuestions.forEach(function(q) {
+          questionMap[q.id] = q.content || q.Content || '';
+        });
+      } catch (e) {
+        // Railway unreachable — questions will show by ID only
+      }
+      items.forEach(function(c) {
+        if (!c.question_content && questionMap[c.question_id]) {
+          c.question_content = questionMap[c.question_id];
+        }
+      });
+
       var highRisk = [], minor = [];
       items.forEach(function(c) {
         if (c.ratio >= 0.1 && c.complaint_count >= 5) { highRisk.push(c); }
@@ -488,25 +504,20 @@
             '</div>' +
           '</div>' +
           '<div class="complaint-actions">' +
-            '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteProComplaintQuestion(\'' + c.question_id + '\')">删除此题</button>' +
+            '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteProComplaintRecord(\'' + c.question_id + '\')">删除这条投诉记录</button>' +
           '</div>' +
         '</div>' +
       '</div>';
     }
 
-    async function deleteProComplaintQuestion(qid) {
-      if (!confirm('确定要删除 Pro 题 "' + escapeHtml(qid) + '" 吗？此操作不可撤销。')) return;
-      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+    async function deleteProComplaintRecord(qid) {
+      if (!confirm('确定要清除题目 "' + escapeHtml(qid) + '" 的所有投诉记录吗？')) return;
       try {
-        var r = await fetch(PRO_API + '/api/match/questions/' + encodeURIComponent(qid), { method: 'DELETE' });
-        if (!r.ok) {
-          var errText = await r.text().catch(function() { return ''; });
-          throw new Error(errText || 'HTTP ' + r.status);
-        }
-        showFlash('已删除 Pro 题', 'success');
+        var res = await api.clearComplaints(qid);
+        showFlash('已清除投诉记录', 'success');
         loadProSection('complaints');
       } catch (e) {
-        showFlash('删除失败: ' + e.message, 'error');
+        showFlash('清除失败: ' + e.message, 'error');
       }
     }
 
