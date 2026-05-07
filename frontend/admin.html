@@ -395,7 +395,9 @@
     async function deleteProRecord(recordId) {
       if (!confirm('确定删除记录 #' + recordId + '？')) return;
       try {
-        await api.post('/api/admin/records/batch-delete', { record_ids: [recordId] });
+        const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+        var r = await fetch(PRO_API + '/api/match/records/' + recordId, { method: 'DELETE' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         document.getElementById('pro-rec-' + recordId).style.display = 'none';
       } catch (e) {
         alert('删除失败: ' + e.message);
