@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>结果验真 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .verify-container { max-width: 540px; margin: 0 auto; }
+    .tab-row { display: flex; gap: 0; margin-bottom: 24px; }
+    .tab-btn {
+      flex: 1; padding: 10px; border: none; background: #f0f0f0;
+      font-size: 0.9em; cursor: pointer; color: var(--text-light);
+    }
+    .tab-btn:first-child { border-radius: 8px 0 0 8px; }
+    .tab-btn:last-child { border-radius: 0 8px 8px 0; }
+    .tab-btn.active { background: var(--primary); color: #fff; font-weight: 600; }
+    .input-row { display: flex; gap: 10px; }
+    .input-row input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95em; }
+    .input-row input:focus { outline: none; border-color: var(--primary); }
+    .result-box { margin-top: 20px; padding: 20px; border-radius: 10px; text-align: center; }
+    .result-box.authentic { background: #d4edda; border: 1px solid #c3e6cb; }
+    .result-box.fake { background: #f8d7da; border: 1px solid #f5c6cb; }
+    .result-box .icon { font-size: 2em; margin-bottom: 8px; }
+    .result-box .title { font-size: 1.1em; font-weight: 600; margin-bottom: 8px; }
+    .result-box .score { font-size: 2.5em; font-weight: 700; }
+    .result-box .meta { font-size: 0.85em; color: #888; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/pro_test.html" class="nav-pro-btn">Pro 深度算法测试</a>
+      <a href="/index.html">首页</a>
+      <a href="/test.html">答题</a>
+    </div>
+  </nav>
+
+  <div class="container verify-container">
+    <div class="card" style="text-align:center;padding:32px 24px;">
+      <h2 style="color:var(--primary-dark);margin-bottom:8px;">结果验真</h2>
+      <p style="color:var(--text-light);font-size:0.9em;margin-bottom:24px;">输入验真码或记录 ID，验证测试结果的真实性</p>
+
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-token" onclick="switchTab('token')">验真码</button>
+        <button class="tab-btn" id="tab-id" onclick="switchTab('id')">记录 ID</button>
+      </div>
+
+      <div id="token-input-section">
+        <div class="input-row">
+          <input type="text" id="token-input" placeholder="粘贴验真码...">
+          <button class="btn btn-primary" onclick="verifyByToken()">验证</button>
+        </div>
+      </div>
+
+      <div id="id-input-section" class="hidden">
+        <div class="input-row">
+          <input type="text" id="id-input" placeholder="输入记录 ID...">
+          <button class="btn btn-primary" onclick="verifyById()">验证</button>
+        </div>
+      </div>
+
+      <div id="result-area"></div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    var currentTab = 'token';
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab-token').classList.toggle('active', tab === 'token');
+      document.getElementById('tab-id').classList.toggle('active', tab === 'id');
+      document.getElementById('token-input-section').classList.toggle('hidden', tab !== 'token');
+      document.getElementById('id-input-section').classList.toggle('hidden', tab !== 'id');
+      document.getElementById('result-area').innerHTML = '';
+    }
+
+    async function verifyByToken() {
+      var token = document.getElementById('token-input').value.trim();
+      if (!token) { showError('请输入验真码'); return; }
+
+      try {
+        var data = await api.verifyByToken(token);
+        showResult(data);
+      } catch (e) {
+        showError(e.message || '验证失败');
+      }
+    }
+
+    async function verifyById() {
+      var id = document.getElementById('id-input').value.trim();
+      if (!id) { showError('请输入记录 ID'); return; }
+
+      try {
+        var data = await api.verifyRecord(id);
+        showResult(data);
+      } catch (e) {
+        showError(e.message || '验证失败');
+      }
+    }
+
+    function showResult(data) {
+      var area = document.getElementById('result-area');
+      var isAuth = data.is_authentic;
+
+      var html = '<div class="result-box ' + (isAuth ? 'authentic' : 'fake') + '">';
+      if (isAuth) {
+        html += '<div class="icon">&#10004;</div>';
+        html += '<div class="title">验证通过 - 结果真实有效</div>';
+        if (data.real_score != null) {
+          html += '<div class="score">' + data.real_score + '</div>';
+          html += '<div style="color:#666;font-size:0.9em;">真实分数</div>';
+        }
+        if (data.surface_score != null) {
+          html += '<div style="margin-top:8px;font-size:0.9em;color:#666;">显示分数: ' + data.surface_score + '</div>';
+        }
+        if (data.created_at) {
+          html += '<div class="meta">测试时间: ' + data.created_at + '</div>';
+        }
+      } else {
+        html += '<div class="icon">&#10008;</div>';
+        html += '<div class="title">验证失败</div>';
+        html += '<div style="color:#888;font-size:0.9em;">该验真码无效或结果可能被篡改</div>';
+      }
+      html += '</div>';
+      area.innerHTML = html;
+    }
+
+    function showError(msg) {
+      document.getElementById('result-area').innerHTML =
+        '<div class="result-box fake">' +
+        '<div class="icon">&#9888;</div>' +
+        '<div class="title">' + msg + '</div>' +
+        '</div>';
+    }
+  </script>
+</body>
+</html>

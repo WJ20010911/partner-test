@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上传题库 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .auth-container { max-width: 420px; margin: 0 auto; }
+    .tab-row { display: flex; gap: 0; margin-bottom: 24px; }
+    .tab-btn {
+      flex: 1; padding: 10px; border: none; background: #f0f0f0;
+      font-size: 0.95em; cursor: pointer; color: var(--text-light);
+    }
+    .tab-btn:first-child { border-radius: 8px 0 0 8px; }
+    .tab-btn:last-child { border-radius: 0 8px 8px 0; }
+    .tab-btn.active { background: var(--primary); color: #fff; font-weight: 600; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 4px; color: var(--text-light); font-size: 0.9em; }
+    .form-group input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 1em; }
+    .form-group input:focus { outline: none; border-color: var(--primary); }
+    .submit-btn { width: 100%; padding: 12px; font-size: 1em; }
+    .form-msg { text-align: center; margin-top: 12px; font-size: 0.9em; }
+    .form-msg.error { color: #e88d9e; }
+    .form-msg.success { color: #28a745; }
+    .info-card { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/pro_test.html" class="nav-pro-btn">Pro 深度算法测试</a>
+      <a href="/index.html">首页</a>
+      <a href="/login.html">上传题库</a>
+    </div>
+  </nav>
+
+  <div class="container auth-container">
+    <!-- Logged in state -->
+    <div id="logged-in" class="hidden">
+      <div class="card" style="text-align:center;padding:40px 20px;">
+        <p style="font-size:1.2em;margin-bottom:8px;">已登录 <span id="display-name" style="color:var(--primary-dark);font-weight:600;"></span></p>
+        <p style="color:var(--text-light);margin-bottom:20px;">你可以上传新题目到题库</p>
+        <button class="btn btn-primary" onclick="showUploadForm()" style="margin-bottom:8px;">上传题目</button>
+        <button class="btn btn-outline" onclick="handleLogout()" style="margin-left:8px;">退出登录</button>
+        <div id="upload-section" class="hidden" style="margin-top:20px;text-align:left;"></div>
+      </div>
+    </div>
+
+    <!-- Auth forms -->
+    <div id="auth-forms">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">登录</button>
+        <button class="tab-btn" id="tab-register" onclick="switchTab('register')">注册</button>
+      </div>
+
+      <div id="login-form" class="card">
+        <h3 style="color:var(--primary-dark);margin-bottom:16px;text-align:center;">登录</h3>
+        <div class="form-group">
+          <label>邮箱</label>
+          <input type="email" id="login-email" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="login-password" placeholder="请输入密码">
+        </div>
+        <button class="btn btn-primary submit-btn" onclick="handleLogin()">登录</button>
+        <div class="form-msg" id="login-msg"></div>
+      </div>
+
+      <div id="register-form" class="card hidden">
+        <h3 style="color:var(--primary-dark);margin-bottom:16px;text-align:center;">注册</h3>
+        <div class="form-group">
+          <label>邮箱</label>
+          <input type="email" id="reg-email" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>昵称（可选，默认取邮箱前缀）</label>
+          <input type="text" id="reg-username" placeholder="你的昵称">
+        </div>
+        <div class="form-group">
+          <label>密码（至少 6 位）</label>
+          <input type="password" id="reg-password" placeholder="至少 6 位密码">
+        </div>
+        <div class="form-group">
+          <label>确认密码</label>
+          <input type="password" id="reg-password2" placeholder="再次输入密码">
+        </div>
+        <button class="btn btn-primary submit-btn" onclick="handleRegister()">注册</button>
+        <div class="form-msg" id="reg-msg"></div>
+      </div>
+    </div>
+
+    <div class="card info-card" id="auth-forms-info">
+      <p style="color:var(--text-light);font-size:0.9em;text-align:center;">注册后你可以上传题目到题库。所有提交的题目需经管理员审核通过后才会出现在测试中。</p>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    // Check login state on load
+    (function() {
+      if (api.isLoggedIn()) {
+        showLoggedIn();
+      }
+    })();
+
+    function switchTab(tab) {
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+    }
+
+    async function handleLogin() {
+      var email = document.getElementById('login-email').value.trim();
+      var password = document.getElementById('login-password').value;
+      var msg = document.getElementById('login-msg');
+      msg.className = 'form-msg';
+      msg.textContent = '';
+
+      if (!email || !password) { msg.className = 'form-msg error'; msg.textContent = '请填写邮箱和密码'; return; }
+
+      try {
+        var data = await api.login(email, password);
+        api.setToken(data.access_token);
+        showLoggedIn(data.username);
+      } catch (e) {
+        msg.className = 'form-msg error';
+        msg.textContent = e.message || '登录失败';
+      }
+    }
+
+    async function handleRegister() {
+      var email = document.getElementById('reg-email').value.trim();
+      var username = document.getElementById('reg-username').value.trim();
+      var password = document.getElementById('reg-password').value;
+      var password2 = document.getElementById('reg-password2').value;
+      var msg = document.getElementById('reg-msg');
+      msg.className = 'form-msg';
+      msg.textContent = '';
+
+      if (!email || !password) { msg.className = 'form-msg error'; msg.textContent = '请填写邮箱和密码'; return; }
+      if (password.length < 6) { msg.className = 'form-msg error'; msg.textContent = '密码至少 6 位'; return; }
+      if (password !== password2) { msg.className = 'form-msg error'; msg.textContent = '两次密码不一致'; return; }
+
+      try {
+        var data = await api.register(email, password, username);
+        api.setToken(data.access_token);
+        showLoggedIn(username || email.split('@')[0]);
+      } catch (e) {
+        msg.className = 'form-msg error';
+        msg.textContent = e.message || '注册失败';
+      }
+    }
+
+    async function showLoggedIn(username) {
+      document.getElementById('auth-forms').classList.add('hidden');
+      document.getElementById('auth-forms-info').classList.add('hidden');
+      document.getElementById('logged-in').classList.remove('hidden');
+
+      if (!username) {
+        try {
+          var me = await api.me();
+          username = me.username || me.email.split('@')[0];
+        } catch(e) {}
+      }
+      document.getElementById('display-name').textContent = username || '';
+    }
+
+    function handleLogout() {
+      api.clearToken();
+      document.getElementById('logged-in').classList.add('hidden');
+      document.getElementById('auth-forms').classList.remove('hidden');
+      document.getElementById('auth-forms-info').classList.remove('hidden');
+    }
+
+    function showUploadForm() {
+      var section = document.getElementById('upload-section');
+      section.classList.remove('hidden');
+      buildUploadUI();
+    }
+
+    function buildUploadUI() {
+      var section = document.getElementById('upload-section');
+      section.innerHTML = '\
+        <h4 style="color:var(--primary-dark);margin-bottom:12px;">提交新题目</h4>\
+        <div class="form-group">\
+          <label>题干</label>\
+          <textarea id="q-content" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.95em;" placeholder="请输入题目内容"></textarea>\
+        </div>\
+        <div class="form-group">\
+          <label>选项（每行一个，格式：分数 | 选项文本）</label>\
+          <textarea id="q-options" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.9em;" placeholder="例：&#10;10 | 选项A描述&#10;5 | 选项B描述&#10;0 | 选项C描述"></textarea>\
+        </div>\
+        <div class="form-group">\
+          <label>标签（逗号分隔，可选）</label>\
+          <input type="text" id="q-tags" placeholder="爱情观, 价值观" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+        </div>\
+        <div style="display:flex;gap:12px;margin-bottom:16px;">\
+          <div class="form-group" style="flex:1;">\
+            <label>维度（可选）</label>\
+            <input type="text" id="q-dimension" placeholder="如: 信任" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+          </div>\
+          <div class="form-group" style="flex:1;">\
+            <label>权重 (1-3)</label>\
+            <input type="number" id="q-weight" value="1" min="1" max="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+          </div>\
+          <div class="form-group" style="flex:1;">\
+            <label>限时(秒,0=不限)</label>\
+            <input type="number" id="q-time-limit" value="0" min="0" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;">\
+          </div>\
+        </div>\
+        <button class="btn btn-primary" onclick="submitUpload()" style="width:100%;">提交题目</button>\
+        <div id="upload-msg" class="form-msg" style="margin-top:8px;"></div>\
+      ';
+    }
+
+    async function submitUpload() {
+      var content = document.getElementById('q-content').value.trim();
+      var optionsText = document.getElementById('q-options').value.trim();
+      var tagsText = document.getElementById('q-tags').value.trim();
+      var dimension = document.getElementById('q-dimension').value.trim();
+      var weight = parseInt(document.getElementById('q-weight').value) || 1;
+      var timeLimit = parseInt(document.getElementById('q-time-limit').value) || 0;
+      var msg = document.getElementById('upload-msg');
+      msg.className = 'form-msg';
+      msg.textContent = '';
+
+      if (!content) { msg.className = 'form-msg error'; msg.textContent = '请填写题目内容'; return; }
+      if (!optionsText) { msg.className = 'form-msg error'; msg.textContent = '请填写选项'; return; }
+
+      var options = [];
+      var lines = optionsText.split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+        var parts = line.split('|');
+        if (parts.length < 2) { msg.className = 'form-msg error'; msg.textContent = '选项格式错误，每行应为 "分数 | 文本"'; return; }
+        var score = parseFloat(parts[0].trim());
+        if (isNaN(score)) { msg.className = 'form-msg error'; msg.textContent = '选项分数无效: ' + parts[0]; return; }
+        options.push({ score: score, text: parts.slice(1).join('|').trim() });
+      }
+      if (options.length < 2) { msg.className = 'form-msg error'; msg.textContent = '至少需要 2 个选项'; return; }
+
+      var tags = tagsText ? tagsText.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+
+      try {
+        var result = await api.submitQuestion({
+          content: content,
+          options: options,
+          tags: tags,
+          dimension: dimension || null,
+          weight: Math.min(3, Math.max(1, weight)),
+          time_limit: Math.max(0, timeLimit || 0)
+        });
+        msg.className = 'form-msg success';
+        msg.textContent = '题目已提交！ID: ' + result.id + '，等待管理员审核。';
+        // Clear form
+        document.getElementById('q-content').value = '';
+        document.getElementById('q-options').value = '';
+        document.getElementById('q-tags').value = '';
+      } catch (e) {
+        msg.className = 'form-msg error';
+        msg.textContent = e.message || '提交失败';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>答题 - 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .test-container { max-width: 680px; margin: 0 auto; }
+    .question-card { background: var(--bg-card); border-radius: 12px; padding: 28px; margin-bottom: 16px; border: 1px solid var(--border); }
+    .question-num { font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px; }
+    .question-content { font-size: 1.15em; color: var(--text); margin-bottom: 24px; line-height: 1.8; }
+    .option-btn {
+      display: block; width: 100%; text-align: left; padding: 14px 18px;
+      margin-bottom: 10px; border: 2px solid var(--border); border-radius: 8px;
+      background: var(--bg-card); color: var(--text); font-size: 1em;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .option-btn:hover { border-color: var(--primary); background: #f5f3ff; }
+    .option-btn.selected { border-color: var(--primary-dark); background: #ede9fe; color: var(--primary-dark); font-weight: 600; }
+    .action-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .action-row button { flex: 1; min-width: 80px; }
+    .progress-bar-wrapper { background: #eee; border-radius: 6px; height: 6px; margin: 16px 0; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--primary); border-radius: 6px; transition: width 0.3s; }
+    .timer-bar-wrapper { background: #eee; border-radius: 6px; height: 4px; margin: 12px 0; overflow: hidden; }
+    .timer-bar { height: 100%; background: #e88d9e; border-radius: 6px; transition: width 1s linear; }
+    .result-score { font-size: 3em; font-weight: 700; color: var(--primary-dark); text-align: center; }
+    .result-label { text-align: center; color: var(--text-light); margin-bottom: 8px; }
+    .result-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; text-align: center; }
+    .verify-code-box {
+      background: #f5f5f5; border-radius: 8px; padding: 16px; margin-top: 16px;
+      font-family: monospace; font-size: 13px; word-break: break-all; color: #333;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/pro_test.html" class="nav-pro-btn">Pro 深度算法测试</a>
+      <a href="/index.html">首页</a>
+      <a href="/login.html">上传题库</a>
+    </div>
+  </nav>
+
+  <div class="container test-container">
+    <!-- Loading -->
+    <div id="loading-screen" class="card" style="text-align:center;padding:60px 20px;">
+      <p style="color:var(--text-light);">加载题目中...</p>
+    </div>
+
+    <!-- Test Screen -->
+    <div id="test-screen" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:0.9em;color:var(--text-light);">第 <strong id="q-num">1</strong> / <span id="q-total">12</span> 题</span>
+        <span style="font-size:0.85em;color:var(--text-muted);" id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-wrapper"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="timer-bar-wrapper hidden" id="timer-bar-wrapper"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+      <div class="question-card">
+        <div class="question-num" id="q-tags"></div>
+        <div class="question-content" id="q-content"></div>
+        <div id="options-list"></div>
+        <div class="action-row">
+          <button class="btn btn-outline btn-sm" onclick="handleSkip()">跳过</button>
+          <button class="btn btn-outline btn-sm" onclick="handleComplaint()" style="color:#e88d9e;border-color:#e88d9e;">投诉</button>
+          <button class="btn btn-primary" id="next-btn" onclick="handleNext()" disabled>下一题</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="hidden">
+      <div class="card" style="text-align:center;padding:40px 20px;">
+        <div class="result-label">你的匹配度得分</div>
+        <div class="result-score" id="result-score">--</div>
+        <p style="color:var(--text-light);margin-top:8px;font-size:0.9em;">满分 100 分，分数越高越匹配</p>
+      </div>
+      <div class="result-card" id="verify-card" style="display:none;">
+        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:8px;">验真码（可用于验证结果真实性）</p>
+        <div class="verify-code-box" id="verify-token"></div>
+        <div style="display:flex;gap:10px;margin-top:12px;justify-content:center;">
+          <button class="btn btn-sm btn-primary" onclick="copyVerifyToken()">复制</button>
+          <a href="/verify.html" class="btn btn-sm btn-outline">去验真</a>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <a href="/index.html" class="btn btn-outline">返回首页</a>
+        <a href="/test.html" class="btn btn-primary" style="margin-left:10px;">再测一次</a>
+      </div>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="error-screen" class="hidden card" style="text-align:center;padding:40px 20px;">
+      <p style="color:#e88d9e;margin-bottom:16px;" id="error-msg"></p>
+      <a href="/index.html" class="btn btn-outline">返回首页</a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script>
+    var questions = [];
+    var currentIdx = 0;
+    var selectedOption = -1;
+    var answers = [];
+    var timerInterval = null;
+    var timerRemaining = 0;
+    var timerLimit = 0;
+    var questionStartTime = 0;
+
+    (async function init() {
+      try {
+        questions = await api.getQuestions(12);
+        if (!questions.length) throw new Error('题库为空，请联系管理员添加题目');
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('test-screen').classList.remove('hidden');
+        document.getElementById('q-total').textContent = questions.length;
+        renderQuestion();
+      } catch (e) {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('error-screen').classList.remove('hidden');
+        document.getElementById('error-msg').textContent = '加载题目失败: ' + e.message;
+      }
+    })();
+
+    function clearTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      document.getElementById('timer-bar-wrapper').classList.add('hidden');
+    }
+
+    function renderQuestion() {
+      clearTimer();
+      var q = questions[currentIdx];
+      var progress = (answers.length / questions.length * 100).toFixed(0);
+      document.getElementById('q-num').textContent = Math.min(answers.length + 1, questions.length);
+      document.getElementById('q-content').textContent = q.content;
+      document.getElementById('progress-fill').style.width = progress + '%';
+      document.getElementById('progress-pct').textContent = progress + '%';
+
+      // Tags
+      var tags = q.tags && q.tags.length ? q.tags.join(' · ') : '';
+      document.getElementById('q-tags').textContent = tags;
+
+      selectedOption = -1;
+      questionStartTime = Date.now();
+
+      var list = document.getElementById('options-list');
+      list.innerHTML = '';
+      q.options.forEach(function(opt) {
+        var btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt.text || '';
+        btn.onclick = function() { selectOption(opt); };
+        list.appendChild(btn);
+      });
+
+      document.getElementById('next-btn').disabled = true;
+
+      // Timer
+      if (q.time_limit && q.time_limit > 0) {
+        timerRemaining = q.time_limit;
+        timerLimit = q.time_limit;
+        document.getElementById('timer-bar-wrapper').classList.remove('hidden');
+        document.getElementById('timer-bar').style.width = '100%';
+        document.getElementById('timer-bar').style.transition = 'none';
+        document.getElementById('timer-bar').offsetHeight;
+        document.getElementById('timer-bar').style.transition = 'width 1s linear';
+
+        timerInterval = setInterval(function() {
+          timerRemaining--;
+          document.getElementById('timer-bar').style.width = Math.max(0, timerRemaining / timerLimit * 100) + '%';
+          if (timerRemaining <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            forceNext(true);
+          }
+        }, 1000);
+      }
+    }
+
+    function selectOption(opt) {
+      selectedOption = questions[currentIdx].options.indexOf(opt);
+      if (selectedOption < 0) selectedOption = 0;
+      var btns = document.querySelectorAll('.option-btn');
+      btns.forEach(function(b) { b.classList.remove('selected'); });
+      btns[selectedOption].classList.add('selected');
+      document.getElementById('next-btn').disabled = false;
+    }
+
+    function forceNext(timeout) {
+      var optIndex = timeout ? -1 : selectedOption;
+      var timeTaken = (Date.now() - questionStartTime) / 1000;
+      var q = questions[currentIdx];
+      answers.push({ question_id: q.id, selected_index: optIndex, time_taken: timeTaken, behavior: timeout ? 'timeout' : 'normal' });
+      currentIdx++;
+      if (currentIdx >= questions.length) {
+        submitAnswers();
+      } else {
+        renderQuestion();
+      }
+    }
+
+    function handleNext() {
+      if (selectedOption < 0) return;
+      forceNext(false);
+    }
+
+    function handleSkip() {
+      clearTimer();
+      var q = questions[currentIdx];
+      answers.push({ question_id: q.id, selected_index: -1, time_taken: 0, behavior: 'normal' });
+      // Fetch replacement
+      var excludeIds = questions.map(function(q) { return q.id; });
+      api.getReplacement(excludeIds).then(function(replacement) {
+        questions.push(replacement);
+        currentIdx++;
+        renderQuestion();
+      }).catch(function() {
+        currentIdx++;
+        if (currentIdx >= questions.length) submitAnswers();
+        else renderQuestion();
+      });
+    }
+
+    function handleComplaint() {
+      clearTimer();
+      var q = questions[currentIdx];
+      answers.push({ question_id: q.id, selected_index: -1, time_taken: 0, behavior: 'complaint' });
+      api.recordSkip(q.id, 'complaint').catch(function(){});
+      // Fetch replacement
+      var excludeIds = questions.map(function(q) { return q.id; });
+      api.getReplacement(excludeIds).then(function(replacement) {
+        questions.push(replacement);
+        currentIdx++;
+        renderQuestion();
+      }).catch(function() {
+        currentIdx++;
+        if (currentIdx >= questions.length) submitAnswers();
+        else renderQuestion();
+      });
+    }
+
+    async function submitAnswers() {
+      document.getElementById('test-screen').classList.add('hidden');
+      document.getElementById('loading-screen').classList.remove('hidden');
+      document.getElementById('loading-screen').querySelector('p').textContent = '正在计算你的匹配结果...';
+
+      try {
+        var result = await api.submitTest(answers);
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('result-score').textContent = result.surface_score;
+
+        if (result.real_token) {
+          document.getElementById('verify-card').style.display = 'block';
+          document.getElementById('verify-token').textContent = result.real_token;
+        }
+      } catch (e) {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('error-screen').classList.remove('hidden');
+        document.getElementById('error-msg').textContent = '提交失败: ' + e.message;
+      }
+    }
+
+    function copyVerifyToken() {
+      var token = document.getElementById('verify-token').textContent;
+      navigator.clipboard.writeText(token).then(function() {
+        var btn = event.target;
+        var orig = btn.textContent;
+        btn.textContent = '已复制';
+        setTimeout(function() { btn.textContent = orig; }, 1500);
+      });
+    }
+  </script>
+</body>
+</html>
