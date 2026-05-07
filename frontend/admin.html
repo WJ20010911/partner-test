@@ -444,6 +444,12 @@
         return;
       }
 
+      var highRisk = [], minor = [];
+      items.forEach(function(c) {
+        if (c.ratio >= 0.1 && c.complaint_count >= 5) { highRisk.push(c); }
+        else { minor.push(c); }
+      });
+
       var totalCnt = items.reduce(function(s, c) { return s + c.complaint_count; }, 0);
       var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
       html += '<div class="section-title" style="color:#000;margin:0;">投诉题</div>';
@@ -451,17 +457,73 @@
       html += '<button class="btn btn-sm btn-outline" style="border-color:#000;color:#000;margin-left:auto;" onclick="loadProSection(\'complaints\')">刷新</button>';
       html += '</div>';
 
-      items.forEach(function(c) {
-        var label = c.question_content || c.question_id || '-';
-        html += '<div class="complaint-card high-risk">';
-        html += '<div class="complaint-header"><div class="complaint-body">';
-        html += '<div class="qtext">' + escapeHtml(label) + '</div>';
-        html += '<div class="complaint-meta">';
-        html += '<span><span class="badge badge-danger">' + c.complaint_count + ' 次</span></span>';
-        html += '<span>回答率 ' + (c.answered_count || 0) + ' 次</span>';
-        html += '</div></div></div></div>';
-      });
+      if (highRisk.length) {
+        html += '<p class="threshold-note" style="color:#c62828;">⚠ 以下题目投诉比例较高，建议优先处理</p>';
+        highRisk.forEach(function(c) { html += renderProComplaintCard(c, true); });
+      }
+      if (minor.length) {
+        html += '<p class="threshold-note">以下题目投诉比例较低，' + minor.length + ' 条</p>';
+        html += '<a class="toggle-link" onclick="toggleMinor()" id="minor-toggle">展开查看低比例投诉 ▼</a>';
+        html += '<div class="minor-list" id="minor-list">';
+        minor.forEach(function(c) { html += renderProComplaintCard(c, false); });
+        html += '</div>';
+      }
       target.innerHTML = html;
+    }
+
+    function renderProComplaintCard(c, highRisk) {
+      var pct = (c.ratio * 100).toFixed(1);
+      var badgeClass = highRisk ? 'badge-danger' : (c.ratio >= 0.05 ? 'badge-warning' : 'badge-ok');
+      var cardClass = highRisk ? 'complaint-card high-risk' : 'complaint-card low-risk';
+      var label = c.question_content || c.question_id || '-';
+      return '<div class="' + cardClass + '">' +
+        '<div class="complaint-header">' +
+          '<div class="complaint-body">' +
+            '<div class="qtext">' + escapeHtml(label) + '</div>' +
+            '<div class="complaint-meta">' +
+              '<span style="cursor:pointer;" onclick="copyText(\'' + escapeHtml(c.question_id) + '\')" title="点击复制 ID">ID: ' + escapeHtml(c.question_id) + '</span>' +
+              '<span>投诉 <strong>' + c.complaint_count + '</strong> 次</span>' +
+              '<span>答题 <strong>' + (c.answered_count || 0) + '</strong> 人</span>' +
+              '<span><span class="badge ' + badgeClass + '">投诉率 ' + pct + '%</span></span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="complaint-actions">' +
+            '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteProComplaintQuestion(\'' + c.question_id + '\')">删除此题</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    async function deleteProComplaintQuestion(qid) {
+      if (!confirm('确定要删除 Pro 题 "' + escapeHtml(qid) + '" 吗？此操作不可撤销。')) return;
+      const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+      try {
+        var r = await fetch(PRO_API + '/api/match/questions/' + encodeURIComponent(qid), { method: 'DELETE' });
+        if (!r.ok) {
+          var errText = await r.text().catch(function() { return ''; });
+          throw new Error(errText || 'HTTP ' + r.status);
+        }
+        showFlash('已删除 Pro 题', 'success');
+        loadProSection('complaints');
+      } catch (e) {
+        showFlash('删除失败: ' + e.message, 'error');
+      }
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(function() {
+        showFlash('已复制: ' + text, 'success');
+      }).catch(function() {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showFlash('已复制: ' + text, 'success');
+      });
     }
 
     async function renderProQuestionsSection(target) {
