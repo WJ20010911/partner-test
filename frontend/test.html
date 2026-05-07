@@ -55,8 +55,8 @@
       <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
         <strong>📖 操作说明</strong><br>
         <strong>当前题库共 <span id="bank-count">--</span> 道题</strong>，每次随机抽取部分题目作答。<br><br>
-        · <strong>跳过</strong> — 这道题不适合你，换一道类似的题继续。<br>
-        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br>
+        · <strong>跳过</strong> — 跳过当前题目，直接进入下一题。<br>
+        · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后进入下一题。<br>
         · <strong>延长 5 秒</strong> — 倒计时快结束时可使用，每道题最多加 3 次。<br><br>
         欢迎点击右上角「上传题库」来贡献题目，一起让测试更丰富、更有参考价值。
       </div>
@@ -270,17 +270,9 @@
       clearTimer();
       var q = questions[currentIdx];
       answers.push({ question_id: q.id, selected_index: -1, time_taken: 0, behavior: 'normal' });
-      // Fetch replacement
-      var excludeIds = questions.map(function(q) { return q.id; });
-      api.getReplacement(excludeIds).then(function(replacement) {
-        questions.push(replacement);
-        currentIdx++;
-        renderQuestion();
-      }).catch(function() {
-        currentIdx++;
-        if (currentIdx >= questions.length) submitAnswers();
-        else renderQuestion();
-      });
+      currentIdx++;
+      if (currentIdx >= questions.length) { submitAnswers(); return; }
+      renderQuestion();
     }
 
     function handleComplaint() {
@@ -288,17 +280,9 @@
       var q = questions[currentIdx];
       answers.push({ question_id: q.id, selected_index: -1, time_taken: 0, behavior: 'complaint' });
       api.recordSkip(q.id, 'complaint').catch(function(){});
-      // Fetch replacement
-      var excludeIds = questions.map(function(q) { return q.id; });
-      api.getReplacement(excludeIds).then(function(replacement) {
-        questions.push(replacement);
-        currentIdx++;
-        renderQuestion();
-      }).catch(function() {
-        currentIdx++;
-        if (currentIdx >= questions.length) submitAnswers();
-        else renderQuestion();
-      });
+      currentIdx++;
+      if (currentIdx >= questions.length) { submitAnswers(); return; }
+      renderQuestion();
     }
 
     async function submitAnswers() {
