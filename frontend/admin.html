@@ -668,11 +668,83 @@
     function renderProBackupSection(target) {
       target.innerHTML = '<div class="section-title" style="color:#000;">Pro 备份</div>' +
         '<p style="color:var(--text-light);font-size:13px;">备份内容为当前 Pro 完整题库 JSON。恢复覆盖会替换线上 Pro 题库。</p>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">' +
         '<button class="btn btn-primary" onclick="downloadProQuestions()">下载 Pro 题库备份</button>' +
         '<button class="btn btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="document.getElementById(\'pro-backup-restore-input\').click()">从备份覆盖恢复</button>' +
         '<input type="file" id="pro-backup-restore-input" accept=".json" style="display:none" onchange="uploadProQuestions(event, true)">' +
+        '</div>' +
+        '<div style="border-top:1px solid var(--border);padding-top:16px;">' +
+        '<div class="section-title" style="color:#000;font-size:14px;">测试记录备份</div>' +
+        '<p style="color:var(--text-light);font-size:13px;margin-bottom:12px;">每次备份会生成包含所有记录的 JSON 快照文件。</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn btn-primary" onclick="backupProRecords()">备份测试记录</button>' +
+        '<button class="btn btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="document.getElementById(\'pro-records-restore-input\').click()">恢复测试记录</button>' +
+        '<input type="file" id="pro-records-restore-input" accept=".json" style="display:none">' +
+        '</div>' +
+        '<div id="pro-records-backup-status" style="margin-top:10px;font-size:13px;color:var(--text-light);"></div>' +
         '</div>';
+
+      document.getElementById('pro-records-restore-input').addEventListener('change', restoreProRecords);
+    }
+
+    async function backupProRecords() {
+      var status = document.getElementById('pro-records-backup-status');
+      status.textContent = '正在备份...';
+      try {
+        const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+        var r = await fetch(PRO_API + '/api/match/records/export');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var data = await r.json();
+
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        var ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+        a.download = 'pro-records-backup-' + ts + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        status.textContent = '备份完成，共 ' + data.total + ' 条记录，已下载为 ' + a.download;
+      } catch (e) {
+        status.textContent = '备份失败: ' + e.message;
+      }
+    }
+
+    async function restoreProRecords(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var status = document.getElementById('pro-records-backup-status');
+      status.textContent = '正在恢复...';
+      try {
+        var text = await file.text();
+        var data = JSON.parse(text);
+
+        var records = Array.isArray(data) ? data : (data.records || []);
+        if (!records.length) throw new Error('备份文件中没有记录');
+
+        var replace = confirm('是否覆盖现有记录？（确定=覆盖，取消=追加）');
+
+        const PRO_API = 'https://partner-text-pro-production.up.railway.app';
+        var r = await fetch(PRO_API + '/api/match/records/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ records: records, replace: replace })
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var result = await r.json();
+
+        status.textContent = '恢复完成：成功 ' + result.restored + ' / 共 ' + result.total + ' 条' +
+          (result.restored < result.total ? '（部分已存在，已跳过）' : '');
+
+        var proTabBtn = document.getElementById('tab-pro');
+        if (proTabBtn) proTabBtn.click();
+      } catch (e) {
+        status.textContent = '恢复失败: ' + e.message;
+      }
+      event.target.value = '';
     }
 
     function renderProMiniStat(label, value) {
