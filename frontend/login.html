@@ -267,7 +267,7 @@
               <input type="text" class="form-input option-text" placeholder="最离谱的反应（5分）" data-opt="5">\
             </div>\
             <div style="margin-top:4px;font-size:13px;color:var(--text-light);">\
-              <span class="toggle-link" id="toggle-extra-opts" onclick="toggleExtraOpts()">+ 添加第 5 个选项</span>\
+              <span class="toggle-link" id="toggle-extra-opts" onclick="toggleExtraOpts()">+ 添加第 6 个选项</span>\
               <span style="margin:0 8px;color:var(--border);">|</span>\
               <span style="font-size:12px;">至少 4 个，最多 6 个</span>\
             </div>\
@@ -331,7 +331,7 @@
       var link = document.getElementById("toggle-extra-opts");
       if (!el) return;
       el.style.display = extraOptVisible ? "" : "none";
-      link.textContent = extraOptVisible ? "− 移除第 5 个选项" : "+ 添加第 5 个选项";
+      link.textContent = extraOptVisible ? "− 移除第 6 个选项" : "+ 添加第 6 个选项";
     }
 
     async function submitUpload() {
@@ -411,6 +411,7 @@
 
       overlay.appendChild(box);
       document.body.appendChild(overlay);
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
 
       document.getElementById('nick-input').focus();
 
