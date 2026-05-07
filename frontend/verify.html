@@ -120,7 +120,7 @@
           html += '<div style="margin-top:8px;font-size:0.9em;color:#666;">显示分数: ' + data.surface_score + '</div>';
         }
         if (data.created_at) {
-          html += '<div class="meta">测试时间: ' + data.created_at + '</div>';
+          html += '<div class="meta">测试时间: ' + formatBeijingTime(data.created_at) + '</div>';
         }
       } else {
         html += '<div class="icon">&#10008;</div>';

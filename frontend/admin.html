@@ -372,7 +372,7 @@
         html += '<div class="card" style="border-color:#000;margin-bottom:14px;" id="pro-rec-' + rec.id + '">';
         html += '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
         html += '<strong style="color:#000;">#' + rec.id + ' · ' + escapeHtml(rec.verifyCode || '-') + '</strong>';
-        html += '<span style="color:var(--text-light);font-size:13px;">' + (rec.createdAt || '').slice(0,19).replace('T', ' ') + '</span>';
+        html += '<span style="color:var(--text-light);font-size:13px;">' + formatBeijingTime(rec.createdAt) + '</span>';
         html += '</div>';
         html += '<div class="stats-grid" style="grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;">';
         html += renderProDimStat('常识', rec.scoreCommonSense != null ? Number(rec.scoreCommonSense).toFixed(1) : '-');
@@ -1272,7 +1272,7 @@
           var u = filtered[i];
           html += '<div class="user-row">';
           html += '<div class="user-info"><span class="email">' + escapeHtml(u.username || u.email) + '</span>';
-          html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + (u.created_at || '').slice(0,10) + '</span></div>';
+          html += '<span class="meta">' + u.role + (u.banned ? '<span class="banned-tag">已封禁</span>' : '') + ' · ' + formatBeijingTime(u.created_at) + '</span></div>';
           html += '<div>';
           if (u.role === 'test' || u.role === 'user') {
             html += '<button class="btn btn-sm btn-outline" style="border-color:#e88d9e;color:#e88d9e;" onclick="deleteUser(\'' + u.id + '\')">删除</button>';
@@ -1332,7 +1332,7 @@
         for (var i = 0; i < logs.length; i++) {
           var l = logs[i];
           html += '<div class="log-entry">';
-          html += '<span class="log-time">' + (l.created_at || '').slice(0,19).replace('T', ' ') + '</span>';
+          html += '<span class="log-time">' + formatBeijingTime(l.created_at) + '</span>';
           html += '<span class="log-action">' + l.action + '</span>';
           html += '<span class="log-detail">' + (l.detail || '') + '</span>';
           html += '<span style="color:var(--text-light);font-size:12px;margin-left:auto;">' + l.ip + '</span>';
@@ -1515,7 +1515,7 @@
         html += '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">';
         html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + (bkStats.test_records ? bkStats.test_records.length : '?') + '</div><div class="label">backup_records 条数</div></div>';
         html += '<div class="stat-card"><div class="num" style="font-size:24px;">' + (bkStats.tester_nicknames ? bkStats.tester_nicknames.length : '?') + '</div><div class="label">昵称记录数</div></div>';
-        html += '<div class="stat-card"><div class="num" style="font-size:24px;color:var(--text-light);">' + (bkStats.exported_at || '').slice(0,10) + '</div><div class="label">数据时间</div></div>';
+        html += '<div class="stat-card"><div class="num" style="font-size:24px;color:var(--text-light);">' + formatBeijingTime(bkStats.exported_at) + '</div><div class="label">数据时间</div></div>';
         html += '</div>';
       } catch (e) {
         html += '<p style="color:var(--text-light);font-size:13px;">加载备份统计失败</p>';

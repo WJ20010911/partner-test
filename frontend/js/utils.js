@@ -13,7 +13,28 @@ function escapeHtml(str) {
 }
 
 /**
+ * Format a ISO datetime string to Beijing time (UTC+8).
+ */
+function formatBeijingTime(isoStr) {
+  if (!isoStr) return '-';
+  try {
+    var d = new Date(isoStr);
+    var beijing = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+    var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+    return beijing.getUTCFullYear() + '-' +
+      pad(beijing.getUTCMonth() + 1) + '-' +
+      pad(beijing.getUTCDate()) + ' ' +
+      pad(beijing.getUTCHours()) + ':' +
+      pad(beijing.getUTCMinutes()) + ':' +
+      pad(beijing.getUTCSeconds());
+  } catch {
+    return isoStr;
+  }
+}
+
+/**
  * Format a ISO datetime string to a human-readable format.
+ * @deprecated Use formatBeijingTime instead for consistent UTC+8 display.
  */
 function formatDateTime(isoStr) {
   if (!isoStr) return '-';
