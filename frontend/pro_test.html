@@ -4,26 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pro 深度算法测试 - 伴侣匹配测试</title>
-  <link rel="stylesheet" href="/css/style.css?v=2">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={purple:{p:'#8b5cf6',d:'#6d28d9'},blue:{p:'#3b82f6',d:'#1d4ed8'},green:{p:'#22c55e',d:'#16a34a'},red:{p:'#ef4444',d:'#dc2626'},pink:{p:'#ec4899',d:'#db2777'},orange:{p:'#f97316',d:'#ea580c'},teal:{p:'#14b8a6',d:'#0d9488'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
   <style>
-    .nav-pro-btn {
-      background: #2d2d2d !important;
-      color: #fff !important;
-      padding: 5px 14px !important;
-      border-radius: 4px !important;
-      font-weight: 600 !important;
-      font-size: 0.85em !important;
-    }
     .pro-badge {
       display: inline-block;
-      background: #2d2d2d;
+      background: linear-gradient(135deg, #b76e79, #8b5a6b);
       color: #fff;
-      padding: 2px 10px;
-      border-radius: 10px;
+      padding: 3px 12px;
+      border-radius: 12px;
       font-size: 0.75em;
-      font-weight: 600;
-      letter-spacing: 0.5px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
       margin-left: 8px;
       vertical-align: middle;
     }
@@ -36,9 +28,10 @@
     .radar-item {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
+      border-radius: var(--radius-md);
+      padding: 18px;
       text-align: center;
+      box-shadow: var(--shadow-sm);
     }
     .radar-item .label {
       font-size: 0.85em;
@@ -48,18 +41,18 @@
     .radar-item .score {
       font-size: 1.8em;
       font-weight: 700;
-      color: #2d2d2d;
+      color: var(--rose-gold);
     }
     .radar-item .bar-bg {
       height: 6px;
-      background: #eee;
+      background: var(--primary-soft);
       border-radius: 3px;
       margin-top: 8px;
       overflow: hidden;
     }
     .radar-item .bar-fill {
       height: 100%;
-      background: #2d2d2d;
+      background: linear-gradient(90deg, #b76e79, #8b5a6b);
       border-radius: 3px;
       transition: width 0.6s ease;
     }
@@ -71,15 +64,17 @@
       margin: 16px 0;
     }
     .result-meta .meta-item {
-      background: #f5f5f5;
-      border-radius: 8px;
-      padding: 10px 18px;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 14px 22px;
       text-align: center;
       font-size: 0.9em;
+      border: 1px solid var(--border);
     }
     .result-meta .meta-item .val {
-      font-weight: 600;
-      color: #2d2d2d;
+      font-weight: 700;
+      font-size: 1.3em;
+      color: var(--rose-gold);
     }
     .result-meta .meta-item .lbl {
       color: var(--text-light);
@@ -95,12 +90,20 @@
     .warning-box {
       background: #fff3cd;
       border: 1px solid #ffeeba;
-      border-radius: 8px;
-      padding: 12px 16px;
+      border-radius: 10px;
+      padding: 14px 18px;
       margin: 12px 0;
       font-size: 0.9em;
       color: #856404;
     }
+    .option-btn {
+      display: block; width: 100%; text-align: left; padding: 15px 20px;
+      margin-bottom: 10px; border: 2px solid var(--border); border-radius: 12px;
+      background: var(--bg-card); color: var(--text); font-size: 1em;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .option-btn:hover { border-color: var(--primary-light); background: var(--primary-soft); transform: scale(1.01); }
+    .option-btn.selected { border-color: var(--primary); background: linear-gradient(135deg, #ffe0e6, #fff0f3); color: var(--primary-dark); font-weight: 600; box-shadow: 0 2px 14px rgba(255,107,129,0.15); transform: scale(1.01); }
   </style>
 </head>
 <body>
@@ -114,60 +117,62 @@
 
   <div class="container">
     <!-- Ready Screen -->
-    <div id="start-screen" class="card" style="text-align:center;">
-      <h2 style="color:var(--primary-dark);margin-bottom:16px;">
-        准备好了吗？
+    <div id="start-screen" class="card" style="text-align:center;padding:48px 28px;">
+      <div style="font-size:3em;margin-bottom:12px;">🔬</div>
+      <h2 style="color:var(--rose-gold);margin-bottom:12px;">
+        深度算法测试
         <span class="pro-badge">PRO</span>
       </h2>
-      <p style="color:var(--text-light);margin-bottom:16px;">
-        这是一次基于多维雷达图算法的<strong style="color:#2d2d2d;">深度行为分析测试</strong>。<br>
-        题目与普通版不同，算法更复杂，结果更精准。
+      <p style="color:var(--text-light);margin-bottom:20px;">
+        基于<strong style="color:var(--rose-gold);">多维雷达图算法</strong>的深度行为分析。<br>
+        包含伪装检测、犹豫度分析、ROI 陷阱，结果更精准。
       </p>
-      <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
-        <strong>📖 操作说明</strong><br>
+      <div style="background:linear-gradient(135deg,#fff0f3,#fff5f7);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 20px;margin-bottom:24px;text-align:left;font-size:0.9em;color:var(--text);line-height:1.7;">
+        <strong style="color:var(--rose-gold);">📖 操作说明</strong><br>
         · <strong>跳过</strong> — 这道题不适合你，换一道类似的题继续。<br>
         · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br><br>
-        ⚠ 注意：此模式使用独立题库和独立评分算法，结果不与普通版互通。
+        ⚠ 此模式使用<strong>独立题库</strong>和<strong>独立评分算法</strong>，结果不与普通版互通。
       </div>
-      <button class="btn btn-primary" onclick="startProTest()">开始 Pro 深度测试</button>
+      <button class="btn btn-primary btn-pulse" onclick="startProTest()" style="font-size:1.08em;padding:14px 40px;background:linear-gradient(135deg,#b76e79,#8b5a6b);">开始 Pro 深度测试</button>
     </div>
 
     <!-- Test Screen -->
     <div id="test-screen" class="hidden">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="color:var(--text-light);font-size:0.9em;">第 <span id="q-num">1</span> / <span id="q-total">12</span> 题</span>
+          <span style="color:var(--text-light);font-size:0.9em;">第 <span id="q-num" style="color:var(--rose-gold);font-weight:600;">1</span> / <span id="q-total">12</span> 题</span>
           <span style="color:var(--text-light);font-size:0.9em;" id="progress-pct">0%</span>
         </div>
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;"></div></div>
-        <div id="timer-bar-wrapper" style="height:4px;background:#eee;border-radius:2px;margin-bottom:8px;overflow:hidden;display:none;">
-          <div id="timer-bar" style="height:100%;background:#e88d9e;width:100%;transition:width 1s linear;"></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;background:linear-gradient(90deg,#b76e79,#8b5a6b);"></div></div>
+        <div id="timer-bar-wrapper" style="height:4px;background:var(--primary-soft);border-radius:2px;margin-bottom:8px;overflow:hidden;display:none;">
+          <div id="timer-bar" style="height:100%;background:linear-gradient(90deg,#cca0aa,#e88d9e);width:100%;transition:width 1s linear;"></div>
         </div>
-        <h3 id="q-content" style="font-size:1.2em;margin-bottom:20px;min-height:60px;"></h3>
+        <h3 id="q-content" style="font-size:1.2em;margin-bottom:20px;min-height:60px;line-height:1.8;"></h3>
         <ul class="options-list" id="options-list"></ul>
-        <div style="display:flex;gap:8px;margin-top:16px;">
-          <button class="btn btn-sm btn-outline" id="skip-btn" onclick="skipQuestion(false)" style="flex:1;font-size:0.85em;">跳过</button>
-          <button class="btn btn-sm btn-outline" id="complain-btn" onclick="skipQuestion(true)" style="flex:1;font-size:0.85em;border-color:#e88d9e;color:#e88d9e;">投诉并跳过</button>
+        <div class="action-row">
+          <button class="btn btn-outline btn-sm" id="skip-btn" onclick="skipQuestion(false)">跳过</button>
+          <button class="btn btn-outline btn-sm" id="complain-btn" onclick="skipQuestion(true)" style="border-color:#e88d9e;color:#e88d9e;">投诉并跳过</button>
+          <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()" disabled>下一题</button>
         </div>
       </div>
-      <button class="btn btn-outline btn-block" id="next-btn" onclick="nextQuestion()" disabled>下一步</button>
     </div>
 
     <!-- Loading Screen -->
     <div id="loading-screen" class="hidden">
       <div class="spinner"></div>
-      <p style="text-align:center;color:var(--text-light);">正在分析你的答案...</p>
+      <p style="text-align:center;color:var(--text-light);margin-top:16px;">正在分析你的答案...</p>
     </div>
 
     <!-- Result Screen -->
     <div id="result-screen" class="hidden">
-      <div class="card">
-        <h2 style="color:var(--primary-dark);margin-bottom:8px;">Pro 深度评估结果</h2>
-        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:16px;">基于多维雷达图算法分析</p>
+      <div class="card" style="padding:32px;">
+        <h2 style="color:var(--rose-gold);margin-bottom:6px;text-align:center;">Pro 深度评估结果</h2>
+        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:20px;text-align:center;">基于多维雷达图算法分析</p>
         <div id="result-content"></div>
       </div>
-      <div style="text-align:center;margin-top:16px;">
+      <div style="text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center;">
         <a href="/index.html" class="btn btn-outline">返回首页</a>
+        <a href="/pro_test.html" class="btn btn-primary" style="background:linear-gradient(135deg,#b76e79,#8b5a6b);">再测一次</a>
       </div>
     </div>
   </div>
@@ -176,7 +181,7 @@
     <p>伴侣匹配测试 &copy; 2026 · Pro 深度算法测试</p>
   </div>
 
-  <script src="/js/api.js?v=2"></script>
+  <script src="/js/api.js?v=3"></script>
   <script src="/js/utils.js?v=2"></script>
   <script>
     const PRO_API_BASE = 'https://partner-text-pro-production.up.railway.app';
@@ -276,7 +281,6 @@
         wrapper.style.display = 'block';
         bar.style.width = '100%';
         bar.style.transition = 'none';
-
         bar.offsetHeight;
         bar.style.transition = 'width 1s linear';
 
@@ -319,7 +323,6 @@
       });
 
       if (isComplaint) {
-        // Also record the complaint to the local server
         fetch('/api/test/skip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -360,7 +363,6 @@
       document.getElementById('test-screen').classList.add('hidden');
       document.getElementById('loading-screen').classList.remove('hidden');
 
-      // Try external API first to get radar scores
       var externalResult = null;
       var externalError = null;
       try {
@@ -378,17 +380,15 @@
         externalError = e.message;
       }
 
-      // Calculate: 4-dimension sum (rounded) and penalty (rounded), kept separate
       var totalPenalty = externalResult ? Math.round((externalResult.totalPenalty || 0) * 100) / 100 : 0;
       var radarScoreSum = 0;
       if (externalResult) {
         Object.values(externalResult.radarScores || {}).forEach(function(v) { radarScoreSum += Math.round(v * 100) / 100; });
       }
       radarScoreSum = Math.round(radarScoreSum * 100) / 100;
-      var finalScore = radarScoreSum;  // 四维总分，不含扣分
+      var finalScore = radarScoreSum;
       var surfaceScore = Math.max(0, Math.round((100 - (radarScoreSum + totalPenalty)) * 10) / 10);
 
-      // Submit to local server once, with correct scores
       var localToken = null;
       try {
         const localR = await fetch('/api/test/pro-submit', {
@@ -433,19 +433,19 @@
       let html = '';
       var radar = result.radarScores || {};
 
-      // First row: 4 dimension scores with color
+      // Four dimension scores
       var dims = [
-        { key: 'Friction',     label: '摩擦' },
-        { key: 'Reality',      label: '现实' },
-        { key: 'Empathy',      label: '共情' },
-        { key: 'CommonSense',  label: '常识' }
+        { key: 'Friction',     label: '摩擦',  emoji: '⚡' },
+        { key: 'Reality',      label: '现实',  emoji: '🌍' },
+        { key: 'Empathy',      label: '共情',  emoji: '💗' },
+        { key: 'CommonSense',  label: '常识',  emoji: '🧠' }
       ];
-      html += '<div style="background:#f8f9fa;border-radius:12px;padding:20px;text-align:center;margin-bottom:12px;">';
-      html += '<div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">';
+
+      html += '<div style="background:linear-gradient(135deg,#faf5f7,#fff5f7);border-radius:var(--radius-md);padding:24px;text-align:center;margin-bottom:16px;">';
+      html += '<div style="display:flex;justify-content:center;gap:28px;flex-wrap:wrap;">';
       dims.forEach(function(d) {
         var score = radar[d.key];
-        var val;
-        if (score == null) { val = '-'; } else { val = Math.round(score * 100) / 100; }
+        var val = (score != null) ? Math.round(score * 100) / 100 : '-';
         var color;
         if (typeof val === 'number') {
           if (val < 10) color = '#f0ad4e';
@@ -454,36 +454,42 @@
         } else {
           color = '#999';
         }
-        html += '<div>';
-        html += '<div style="font-size:0.75em;color:#888;margin-bottom:2px;">' + d.label + '</div>';
+        html += '<div style="min-width:70px;">';
+        html += '<div style="font-size:1.3em;margin-bottom:4px;">' + d.emoji + '</div>';
+        html += '<div style="font-size:0.75em;color:#888;margin-bottom:4px;">' + d.label + '</div>';
         html += '<div style="font-size:2em;font-weight:700;color:' + color + ';">' + val + '</div>';
         html += '</div>';
       });
       html += '</div>';
       html += '</div>';
 
-      // Second row: total score + penalty
-      html += '<div style="background:#f8f9fa;border-radius:12px;padding:16px;text-align:center;margin-bottom:20px;">';
+      // Total scores
+      html += '<div style="background:linear-gradient(135deg,#faf5f7,#fff5f7);border-radius:var(--radius-md);padding:20px;text-align:center;margin-bottom:20px;">';
       html += '<div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">';
-      html += '<div><div style="font-size:1.6em;font-weight:700;color:#2d2d2d;">' + (result.finalScore != null ? result.finalScore.toFixed(1) : '0.0') + '</div>';
-      html += '<div style="font-size:0.75em;color:#888;margin-top:2px;">四维总分</div></div>';
-      html += '<div><div style="font-size:1.6em;font-weight:700;color:#e88d9e;">' + (result.totalPenalty || 0).toFixed(1) + '</div>';
-      html += '<div style="font-size:0.75em;color:#888;margin-top:2px;">扣分</div></div>';
+      html += '<div><div style="font-size:1.8em;font-weight:700;color:var(--rose-gold);">' + (result.finalScore != null ? result.finalScore.toFixed(1) : '0.0') + '</div>';
+      html += '<div style="font-size:0.8em;color:#888;margin-top:4px;">四维总分</div></div>';
+      html += '<div><div style="font-size:1.8em;font-weight:700;color:#e88d9e;">' + (result.totalPenalty || 0).toFixed(1) + '</div>';
+      html += '<div style="font-size:0.8em;color:#888;margin-top:4px;">扣分</div></div>';
       html += '</div>';
       html += '</div>';
 
-      // Verify code card
+      // Verify code
       if (result.localToken) {
-        html += '<div style="background:#ffffff;border:1px solid #e0e0e0;border-radius:10px;padding:16px;">';
-        html += '<div style="font-size:0.85em;color:#888;margin-bottom:8px;">验真码</div>';
+        html += '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;">';
+        html += '<div style="font-size:0.85em;color:var(--text-muted);margin-bottom:10px;text-align:center;">验真码</div>';
         html += '<div style="display:flex;align-items:center;gap:10px;">';
-        html += '<code id="local-token" style="flex:1;background:#f5f5f5;padding:8px 12px;border-radius:6px;font-size:13px;word-break:break-all;font-family:monospace;color:#333;">' + escapeHtml(result.localToken) + '</code>';
-        html += '<button onclick="copyToken()" style="border:none;background:#2d2d2d;color:#fff;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.85em;white-space:nowrap;">复制</button>';
+        html += '<code id="local-token" style="flex:1;background:var(--bg);padding:10px 14px;border-radius:10px;font-size:13px;word-break:break-all;font-family:monospace;color:var(--text);border:1px solid var(--border);">' + escapeHtml(result.localToken) + '</code>';
+        html += '<button onclick="copyToken()" style="border:none;background:linear-gradient(135deg,#b76e79,#8b5a6b);color:#fff;padding:10px 18px;border-radius:24px;cursor:pointer;font-size:0.85em;white-space:nowrap;font-weight:600;">复制</button>';
         html += '</div>';
-        html += '<div style="margin-top:12px;text-align:center;">';
+        html += '<div style="margin-top:14px;text-align:center;">';
         html += '<a href="/verify.html" class="btn btn-sm btn-outline" target="_blank">去验真</a>';
         html += '</div>';
         html += '</div>';
+      }
+
+      // Warning
+      if (result.isFlagged) {
+        html = '<div class="warning-box" style="margin-bottom:16px;">⚠ 检测到异常答题模式，可能影响结果准确性</div>' + html;
       }
 
       document.getElementById('result-content').innerHTML = html;
@@ -496,7 +502,7 @@
         var orig = btn.textContent;
         btn.textContent = '已复制';
         btn.style.background = '#28a745';
-        setTimeout(function() { btn.textContent = orig; btn.style.background = '#2d2d2d'; }, 1500);
+        setTimeout(function() { btn.textContent = orig; btn.style.background = 'linear-gradient(135deg,#b76e79,#8b5a6b)'; }, 1500);
       });
     }
 

@@ -3,66 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>你适合什么样的伴侣？</title>
-  <link rel="stylesheet" href="/css/style.css?v=2">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={purple:{p:'#8b5cf6',d:'#6d28d9'},blue:{p:'#3b82f6',d:'#1d4ed8'},green:{p:'#22c55e',d:'#16a34a'},red:{p:'#ef4444',d:'#dc2626'},pink:{p:'#ec4899',d:'#db2777'},orange:{p:'#f97316',d:'#ea580c'},teal:{p:'#14b8a6',d:'#0d9488'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
-  <style>
-    .nav-pro-btn {
-      background: #2d2d2d !important;
-      color: #fff !important;
-      padding: 5px 14px !important;
-      border-radius: 4px !important;
-      font-weight: 600 !important;
-      font-size: 0.85em !important;
-    }
-    .nav-pro-btn:hover {
-      background: #444 !important;
-    }
-  </style>
+  <title>你适合什么样的伴侣？— 伴侣匹配测试</title>
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
 </head>
 <body>
   <nav class="nav">
-  <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
-  <div class="nav-links">
-    <a href="/pro_test.html" class="nav-pro-btn">Pro 深度算法测试</a>
-    <a href="/index.html">首页</a>
-    <a href="/login.html">上传题库</a>
-    <a href="javascript:void(0)" onclick="showContributors()" style="cursor:pointer;">致谢</a>
-  </div>
-</nav>
+    <a href="/index.html" class="nav-brand">伴侣匹配测试</a>
+    <div class="nav-links">
+      <a href="/pro_test.html" class="nav-pro-btn">Pro 深度算法测试</a>
+      <a href="/index.html">首页</a>
+      <a href="/login.html">上传题库</a>
+      <a href="javascript:void(0)" onclick="showContributors()">致谢</a>
+    </div>
+  </nav>
+
   <div class="container">
-    <div class="hero">
-      <div class="illustration">💕</div>
-      <h1>你适合什么样的伴侣？</h1>
-      <p>一套科学的恋爱价值观自测题，帮你了解自己在感情中的真实偏好与期待。只需几分钟，发现你的理想伴侣画像。</p>
-      <a href="/test.html" class="btn btn-primary" style="font-size:1.15em;padding:16px 48px;">开始测试</a>
+    <!-- ═══ Hero ═══ -->
+    <div class="hero animate-in">
+      <div class="illustration heart-beat">💕</div>
+      <h1>找到真正适合你的那个人</h1>
+      <p>基于多维心理学模型，深入分析你的恋爱价值观与行为模式。不是简单的性格测试，而是一次对内心真实需求的探索。</p>
+      <a href="/test.html" class="btn btn-primary btn-pulse" style="font-size:1.1em;padding:14px 44px;">开始测试</a>
     </div>
-    <div class="card" style="text-align:center;">
-      <p style="color:var(--text-light);margin-bottom:12px;">已参与测试 <strong id="test-count" style="color:var(--primary-dark);">--</strong> 人次</p>
-      <p style="color:var(--text-muted);font-size:0.9em;">所有数据匿名处理，结果仅供个人参考</p>
+
+    <!-- ═══ Stats ═══ -->
+    <div class="card" style="text-align:center;padding:24px;">
+      <p style="color:var(--text-light);font-size:0.95em;margin-bottom:6px;">
+        已有 <strong style="color:var(--primary-dark);font-size:1.3em;" id="test-count">--</strong> 人参与测试
+      </p>
+      <p style="color:var(--text-muted);font-size:0.85em;">所有数据匿名处理，结果仅供个人参考</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
-      <div class="card" style="text-align:center;">
-        <h3 style="color:var(--primary-dark);margin-bottom:8px;">📝 情景式题目</h3>
-        <p style="color:var(--text-light);font-size:0.9em;">真实的恋爱场景，选择最接近你内心的答案</p>
+
+    <!-- ═══ Features ═══ -->
+    <div class="feature-grid">
+      <div class="feature-card animate-in" style="animation-delay:0.1s;">
+        <div class="icon">💌</div>
+        <h3>情境式题目</h3>
+        <p>真实的恋爱场景，选择最接近你内心的答案，而非社交期望下的回答</p>
       </div>
-      <div class="card" style="text-align:center;">
-        <h3 style="color:var(--primary-dark);margin-bottom:8px;">🎯 精准分析</h3>
-        <p style="color:var(--text-light);font-size:0.9em;">多维度评估你的恋爱价值观倾向</p>
+      <div class="feature-card animate-in" style="animation-delay:0.2s;">
+        <div class="icon">🎯</div>
+        <h3>精准算法</h3>
+        <p>四维度雷达图分析，从共情、现实、摩擦、常识多角度评估你的恋爱风格</p>
       </div>
-      <div class="card" style="text-align:center;">
-        <h3 style="color:var(--primary-dark);margin-bottom:8px;">🔒 隐私保护</h3>
-        <p style="color:var(--text-light);font-size:0.9em;">结果仅你自己可见，数据安全有保障</p>
+      <div class="feature-card animate-in" style="animation-delay:0.3s;">
+        <div class="icon">🔒</div>
+        <h3>隐私保护</h3>
+        <p>结果仅你自己可见，我们从不追踪你的个人身份信息</p>
       </div>
+    </div>
+
+    <!-- ═══ Pro 深度测试引导 ═══ -->
+    <div class="card" style="text-align:center;border:1px dashed var(--primary-light);background:linear-gradient(135deg,#fdf5f7,#fff);">
+      <p style="color:var(--text-light);font-size:0.95em;margin-bottom:8px;">
+        想要<strong style="color:var(--rose-gold);">更精准</strong>的分析？
+      </p>
+      <p style="color:var(--text-muted);font-size:0.85em;margin-bottom:14px;">
+        试试 Pro 深度测试 — 多维雷达图算法，含伪装检测与犹豫度分析
+      </p>
+      <a href="/pro_test.html" class="btn btn-sm" style="background:linear-gradient(135deg,#b76e79,#8b5a6b);color:#fff;border:none;border-radius:24px;padding:7px 20px;">体验 Pro 深度测试</a>
     </div>
   </div>
+
   <div class="footer">
-    <p>伴侣匹配测试 &copy; 2026</p>
-    <p style="margin-top:4px;"><a href="/verify.html" style="color:var(--text-muted);text-decoration:underline;">结果验真</a></p>
+    <p>伴侣匹配测试 &copy; 2026 · 用心了解自己，才能遇见对的人</p>
+    <p style="margin-top:6px;">
+      <a href="/verify.html" style="color:var(--text-muted);">结果验真</a>
+    </p>
   </div>
-  <script src="/js/api.js?v=2"></script>
+
+  <script src="/js/api.js?v=3"></script>
   <script src="/js/utils.js?v=2"></script>
   <script>
+    // ── 主题切换（可扩展）──
+    // 点击 nav-brand 5 次循环切换主题色调
+    (function(){
+      var themes = ['rose','peach','coral','blush','berry','warm','soft'];
+      var themeMap = {
+        rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},
+        coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},
+        berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},
+        soft:{p:'#f8a5b6',d:'#e08a9b'}
+      };
+      var clicks = 0, timer = null;
+      document.querySelector('.nav-brand').addEventListener('click', function(e){
+        clicks++;
+        clearTimeout(timer);
+        if (clicks >= 5) {
+          var current = localStorage.getItem('theme') || 'rose';
+          var idx = themes.indexOf(current);
+          var next = themes[(idx + 1) % themes.length];
+          var c = themeMap[next];
+          document.documentElement.style.setProperty('--primary', c.p);
+          document.documentElement.style.setProperty('--primary-dark', c.d);
+          localStorage.setItem('theme', next);
+          clicks = 0;
+        }
+        timer = setTimeout(function(){ clicks = 0; }, 800);
+      });
+    })();
+
     // ── 致谢窗口 ──
     var currentSort = 'time';
 
@@ -75,26 +116,20 @@
         sorted.sort(function(a, b) { return (a.time || '') < (b.time || '') ? 1 : -1; });
       }
 
-      // Reuse existing overlay or create new
       var overlay = document.getElementById('contrib-overlay');
       if (!overlay) return;
       var box = overlay.querySelector('.contrib-box');
       if (!box) return;
 
-      // Keep title and sort bar, replace list
-      var title = box.querySelector('.contrib-title');
       var sortBar = box.querySelector('.contrib-sort');
-      var oldList = box.querySelector('.contrib-list');
       var closeBtn = box.querySelector('.contrib-close');
 
-      // Clear everything after sort bar
       while (box.lastChild && box.lastChild !== sortBar) {
         box.removeChild(box.lastChild);
       }
 
       var listDiv = document.createElement('div');
       listDiv.className = 'contrib-list';
-      listDiv.style.cssText = 'max-height:300px;overflow-y:auto;margin-bottom:12px;';
 
       if (sorted.length === 0) {
         var empty = document.createElement('p');
@@ -104,7 +139,7 @@
       } else {
         sorted.forEach(function(item) {
           var row = document.createElement('div');
-          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);';
+          row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);';
 
           var nameSpan = document.createElement('span');
           nameSpan.style.cssText = 'font-size:14px;color:var(--text);';
@@ -129,15 +164,13 @@
 
       var overlay = document.createElement('div');
       overlay.id = 'contrib-overlay';
-      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;display:flex;align-items:center;justify-content:center;';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:999;display:flex;align-items:center;justify-content:center;';
 
       var box = document.createElement('div');
       box.className = 'contrib-box';
-      box.style.cssText = 'background:#fff;max-width:420px;width:90%;border-radius:12px;padding:24px;position:relative;';
 
       var title = document.createElement('h3');
       title.className = 'contrib-title';
-      title.style.cssText = 'color:var(--primary-dark);margin-bottom:12px;';
       title.textContent = '致谢';
       box.appendChild(title);
 
@@ -146,36 +179,33 @@
       hint.textContent = '📝 上传题目者';
       box.appendChild(hint);
 
-      // Sort buttons
       var sortBar = document.createElement('div');
       sortBar.className = 'contrib-sort';
-      sortBar.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
 
       var sortTime = document.createElement('button');
-      sortTime.className = 'btn btn-sm' + (currentSort === 'time' ? ' btn-primary' : ' btn-secondary');
+      sortTime.className = 'btn btn-sm' + (currentSort === 'time' ? ' btn-primary' : ' btn-outline');
       sortTime.textContent = '⏱ 最新';
       sortTime.onclick = function() {
         currentSort = 'time';
         api.getContributors().then(function(list) { renderContributors(list); });
         sortTime.className = 'btn btn-sm btn-primary';
-        sortCount.className = 'btn btn-sm btn-secondary';
+        sortCount.className = 'btn btn-sm btn-outline';
       };
       sortBar.appendChild(sortTime);
 
       var sortCount = document.createElement('button');
-      sortCount.className = 'btn btn-sm' + (currentSort === 'count' ? ' btn-primary' : ' btn-secondary');
+      sortCount.className = 'btn btn-sm' + (currentSort === 'count' ? ' btn-primary' : ' btn-outline');
       sortCount.textContent = '📊 题量';
       sortCount.onclick = function() {
         currentSort = 'count';
         api.getContributors().then(function(list) { renderContributors(list); });
         sortCount.className = 'btn btn-sm btn-primary';
-        sortTime.className = 'btn btn-sm btn-secondary';
+        sortTime.className = 'btn btn-sm btn-outline';
       };
       sortBar.appendChild(sortCount);
 
       box.appendChild(sortBar);
 
-      // Close button
       var closeBtn = document.createElement('button');
       closeBtn.className = 'btn btn-outline contrib-close';
       closeBtn.style.cssText = 'margin-top:8px;width:100%;';
@@ -187,7 +217,6 @@
       overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
       document.body.appendChild(overlay);
 
-      // Load and render
       api.getContributors().then(function(list) {
         renderContributors(list);
       }).catch(function(e) {
@@ -198,16 +227,30 @@
       });
     }
 
-    // ── 已参与测试人数 ──
+    // ── 参与人数 ──
     function loadTestCount() {
       api.getPublicStats().then(function(data) {
-        document.getElementById('test-count').textContent = data.total_tests || 0;
-      }).catch(function() {
-        // silently ignore, keep current value
-      });
+        var el = document.getElementById('test-count');
+        var target = data && data.total_tests ? data.total_tests : 0;
+        animateCount(el, target);
+      }).catch(function() {});
     }
 
-    // 页面加载时立即更新，之后每 60 秒刷新一次
+    function animateCount(el, target) {
+      var current = parseInt(el.textContent) || 0;
+      if (current === target) { el.textContent = target; return; }
+      var step = Math.max(1, Math.floor(Math.abs(target - current) / 30));
+      var timer = setInterval(function() {
+        if (current < target) {
+          current = Math.min(current + step, target);
+        } else {
+          current = Math.max(current - step, target);
+        }
+        el.textContent = current;
+        if (current === target) clearInterval(timer);
+      }, 30);
+    }
+
     loadTestCount();
     setInterval(loadTestCount, 60000);
 

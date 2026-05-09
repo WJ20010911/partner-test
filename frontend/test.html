@@ -4,35 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>答题 - 伴侣匹配测试</title>
-  <link rel="stylesheet" href="/css/style.css?v=2">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={purple:{p:'#8b5cf6',d:'#6d28d9'},blue:{p:'#3b82f6',d:'#1d4ed8'},green:{p:'#22c55e',d:'#16a34a'},red:{p:'#ef4444',d:'#dc2626'},pink:{p:'#ec4899',d:'#db2777'},orange:{p:'#f97316',d:'#ea580c'},teal:{p:'#14b8a6',d:'#0d9488'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
+  <link rel="stylesheet" href="/css/style.css?v=3">
+  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
   <style>
     .test-container { max-width: 680px; margin: 0 auto; }
-    .question-card { background: var(--bg-card); border-radius: 12px; padding: 28px; margin-bottom: 16px; border: 1px solid var(--border); }
+    .question-card { background: var(--bg-card); border-radius: var(--radius-md); padding: 28px; margin-bottom: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
     .question-num { font-size: 0.85em; color: var(--text-muted); margin-bottom: 8px; }
     .question-content { font-size: 1.15em; color: var(--text); margin-bottom: 24px; line-height: 1.8; }
     .option-btn {
-      display: block; width: 100%; text-align: left; padding: 14px 18px;
-      margin-bottom: 10px; border: 2px solid var(--border); border-radius: 8px;
+      display: block; width: 100%; text-align: left; padding: 16px 20px;
+      margin-bottom: 10px; border: 2px solid var(--border); border-radius: 12px;
       background: var(--bg-card); color: var(--text); font-size: 1em;
-      cursor: pointer; transition: all 0.15s;
+      cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .option-btn:hover { border-color: var(--primary); background: #f5f3ff; }
-    .option-btn.selected { border-color: var(--primary-dark); background: #ede9fe; color: var(--primary-dark); font-weight: 600; }
-    .action-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
-    .action-row button { flex: 1; min-width: 80px; }
-    .progress-bar-wrapper { background: #eee; border-radius: 6px; height: 6px; margin: 16px 0; overflow: hidden; }
-    .progress-bar-fill { height: 100%; background: var(--primary); border-radius: 6px; transition: width 0.3s; }
-    .timer-bar-wrapper { background: #eee; border-radius: 6px; height: 4px; margin: 12px 0; overflow: hidden; }
-    .timer-bar { height: 100%; background: #e88d9e; border-radius: 6px; transition: width 1s linear; }
-    .result-score { font-size: 3em; font-weight: 700; color: var(--primary-dark); text-align: center; }
-    .result-label { text-align: center; color: var(--text-light); margin-bottom: 8px; }
-    .result-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; text-align: center; }
+    .option-btn:hover { border-color: var(--primary-light); background: var(--primary-soft); transform: scale(1.01); }
+    .option-btn.selected { border-color: var(--primary); background: linear-gradient(135deg, #ffe0e6, #fff0f3); color: var(--primary-dark); font-weight: 600; box-shadow: 0 2px 14px rgba(255,107,129,0.15); transform: scale(1.01); }
+    .progress-bar-wrapper { background: var(--primary-soft); border-radius: 6px; height: 6px; margin: 16px 0; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary-light), var(--primary), var(--primary-dark)); border-radius: 6px; transition: width 0.3s; }
+    .timer-bar-wrapper { background: var(--primary-soft); border-radius: 6px; height: 4px; margin: 12px 0; overflow: hidden; }
+    .timer-bar { height: 100%; background: linear-gradient(90deg, #ffb3c1, #e88d9e); border-radius: 6px; transition: width 1s linear; }
+    .result-score { font-size: 3.4em; font-weight: 800; text-align: center; background: linear-gradient(135deg, var(--primary), var(--accent-warm)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .result-label { text-align: center; color: var(--text-light); margin-bottom: 10px; font-size: 1.05em; }
+    .result-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 28px; margin-bottom: 16px; text-align: center; box-shadow: var(--shadow-sm); }
     .verify-code-box {
-      background: #f5f5f5; border-radius: 8px; padding: 16px; margin-top: 16px;
-      font-family: monospace; font-size: 13px; word-break: break-all; color: #333;
+      background: var(--bg); border-radius: 12px; padding: 18px; margin-top: 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; word-break: break-all; color: var(--text);
+      border: 1px solid var(--border);
     }
     .hidden { display: none !important; }
+    #start-screen.card { padding: 48px 28px; }
   </style>
 </head>
 <body>
@@ -47,31 +47,33 @@
 
   <div class="container test-container">
     <!-- Start Screen -->
-    <div id="start-screen" class="card" style="text-align:center;padding:40px 20px;">
-      <h2 style="color:var(--primary-dark);margin-bottom:16px;">准备好了吗？</h2>
-      <p style="color:var(--text-light);margin-bottom:16px;">
-        你会遇到一些情景题，请凭第一感觉选择答案。<br>
+    <div id="start-screen" class="card" style="text-align:center;">
+      <div style="font-size:3em;margin-bottom:12px;" class="heart-beat">💕</div>
+      <h2 style="color:var(--primary-dark);margin-bottom:12px;">准备好了吗？</h2>
+      <p style="color:var(--text-light);margin-bottom:20px;">
+        你会遇到一些情景题，请凭第一感觉选择答案。
       </p>
-      <div style="background:#f0f7ff;border:1px solid #d4e3f7;border-radius:8px;padding:12px 16px;margin-bottom:20px;text-align:left;font-size:13px;color:var(--text-color);line-height:1.6;">
-        <strong>📖 操作说明</strong><br>
-        <strong>当前题库共 <span id="bank-count">--</span> 道题</strong>，每次随机抽取部分题目作答。<br><br>
+      <div style="background:linear-gradient(135deg,#fff0f3,#fff5f7);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 20px;margin-bottom:24px;text-align:left;font-size:0.9em;color:var(--text);line-height:1.7;">
+        <strong style="color:var(--primary-dark);">📖 操作说明</strong><br>
+        <span style="color:var(--text-muted);">当前题库共 <strong id="bank-count" style="color:var(--primary-dark);">--</strong> 道题</span>，每次随机抽取部分题目作答。<br><br>
         · <strong>跳过</strong> — 跳过当前题目，直接进入下一题。<br>
         · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后进入下一题。<br>
         · <strong>延长 5 秒</strong> — 倒计时快结束时可使用，每道题最多加 3 次。<br><br>
-        欢迎点击右上角「上传题库」来贡献题目，一起让测试更丰富、更有参考价值。
+        <span style="color:var(--text-muted);">欢迎点击右上角「上传题库」来贡献题目，一起让测试更丰富。</span>
       </div>
-      <button class="btn btn-primary" onclick="startTest()">开始答题</button>
+      <button class="btn btn-primary btn-pulse" onclick="startTest()" style="font-size:1.08em;padding:14px 40px;">开始答题</button>
     </div>
 
     <!-- Loading -->
     <div id="loading-screen" class="card hidden" style="text-align:center;padding:60px 20px;">
-      <p style="color:var(--text-light);">加载题目中...</p>
+      <div class="spinner"></div>
+      <p style="color:var(--text-light);margin-top:16px;">加载题目中...</p>
     </div>
 
     <!-- Test Screen -->
     <div id="test-screen" class="hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-size:0.9em;color:var(--text-light);">第 <strong id="q-num">1</strong> / <span id="q-total">12</span> 题</span>
+        <span style="font-size:0.9em;color:var(--text-light);">第 <strong id="q-num" style="color:var(--primary-dark);">1</strong> / <span id="q-total">12</span> 题</span>
         <span style="font-size:0.85em;color:var(--text-muted);" id="progress-pct">0%</span>
       </div>
       <div class="progress-bar-wrapper"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
@@ -91,33 +93,39 @@
 
     <!-- Result Screen -->
     <div id="result-screen" class="hidden">
-      <div class="card" style="text-align:center;padding:40px 20px;">
+      <div class="card" style="text-align:center;padding:48px 28px;">
         <div class="result-label">你的伴侣匹配度得分</div>
         <div class="result-score" id="result-score">--</div>
-        <p style="color:var(--text-light);margin-top:8px;font-size:0.9em;">分数越低越匹配</p>
+        <p style="color:var(--text-light);margin-top:10px;font-size:0.9em;">分数越低越匹配</p>
       </div>
       <div class="result-card" id="verify-card" style="display:none;">
-        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:8px;">验真码（可用于验证结果真实性）</p>
+        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:10px;">验真码（可用于验证结果真实性）</p>
         <div class="verify-code-box" id="verify-token"></div>
-        <div style="display:flex;gap:10px;margin-top:12px;justify-content:center;">
+        <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;">
           <button class="btn btn-sm btn-primary" onclick="copyVerifyToken()">复制</button>
           <a href="/verify.html" class="btn btn-sm btn-outline">去验真</a>
         </div>
       </div>
-      <div style="text-align:center;margin-top:20px;">
+      <!-- Pro upsell -->
+      <div class="result-card" style="border:1px dashed var(--primary-light);background:linear-gradient(135deg,#fdf5f7,#fff);">
+        <p style="color:var(--text-light);font-size:0.9em;margin-bottom:6px;">觉得结果不够准？</p>
+        <p style="color:var(--text-muted);font-size:0.82em;margin-bottom:12px;">试试 Pro 深度测试 — 反伪装 + 犹豫度检测，算法更复杂，结果更精准</p>
+        <a href="/pro_test.html" class="btn btn-sm" style="background:linear-gradient(135deg,#b76e79,#8b5a6b);color:#fff;border:none;border-radius:24px;padding:7px 22px;">Pro 深度测试</a>
+      </div>
+      <div style="text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center;">
         <a href="/index.html" class="btn btn-outline">返回首页</a>
-        <a href="/test.html" class="btn btn-primary" style="margin-left:10px;">再测一次</a>
+        <a href="/test.html" class="btn btn-primary">再测一次</a>
       </div>
     </div>
 
     <!-- Error Screen -->
     <div id="error-screen" class="hidden card" style="text-align:center;padding:40px 20px;">
-      <p style="color:#e88d9e;margin-bottom:16px;" id="error-msg"></p>
+      <p style="color:#e88d9e;margin-bottom:16px;font-size:1.1em;" id="error-msg"></p>
       <a href="/index.html" class="btn btn-outline">返回首页</a>
     </div>
   </div>
 
-  <script src="/js/api.js?v=2"></script>
+  <script src="/js/api.js?v=3"></script>
   <script src="/js/utils.js?v=2"></script>
   <script>
     var questions = [];
@@ -131,7 +139,6 @@
     var extendCount = 0;
     var MAX_EXTENDS = 3;
 
-    // Fetch bank count on page load
     (async function() {
       try {
         var s = await api.getPublicStats();
@@ -170,10 +177,6 @@
       document.getElementById('progress-fill').style.width = progress + '%';
       document.getElementById('progress-pct').textContent = progress + '%';
 
-      // Tags (hidden in original)
-      // var tags = q.tags && q.tags.length ? q.tags.join(' · ') : '';
-      // document.getElementById('q-tags').textContent = tags;
-
       selectedOption = -1;
       questionStartTime = Date.now();
 
@@ -189,7 +192,6 @@
 
       document.getElementById('next-btn').disabled = true;
 
-      // Timer
       extendCount = 0;
       var extBtn = document.getElementById('extend-btn');
       extBtn.disabled = true;
@@ -207,7 +209,6 @@
 
         timerInterval = setInterval(function() {
           timerRemaining--;
-          // Handle extend button state
           var eBtn = document.getElementById('extend-btn');
           var eCnt = document.getElementById('extend-count');
           if (timerRemaining <= 5 && extendCount < MAX_EXTENDS) {
