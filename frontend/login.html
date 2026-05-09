@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>上传题库 - 伴侣匹配测试</title>
-  <link rel="stylesheet" href="/css/style.css?v=3">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
+  <link rel="stylesheet" href="/css/style.css?v=4">
+  <script src="/js/theme.js?v=1"></script>
   <style>
     .auth-container { max-width: 440px; margin: 0 auto; }
     .upload-container { max-width: 680px; margin: 0 auto; }
@@ -118,6 +118,7 @@
     </div>
   </div>
 
+  <script src="/js/theme.js?v=1"></script>
   <script src="/js/api.js?v=3"></script>
   <script src="/js/utils.js?v=2"></script>
   <script>
@@ -436,6 +437,14 @@
       else if (type === 'success') el.className = 'form-msg success';
       el.textContent = msg;
     }
+
+    // ── Theme palette ──
+    var tp = document.createElement('div');
+    tp.id = 'theme-palette';
+    tp.style.cssText = 'text-align:center;padding:16px 0;';
+    var container = document.querySelector('.container');
+    if (container) container.appendChild(tp);
+    Theme.renderPalette(tp);
   </script>
 </body>
 </html>

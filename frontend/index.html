@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>你适合什么样的伴侣？— 伴侣匹配测试</title>
-  <link rel="stylesheet" href="/css/style.css?v=3">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
+  <link rel="stylesheet" href="/css/style.css?v=4">
+  <script src="/js/theme.js?v=1"></script>
 </head>
 <body>
   <nav class="nav">
@@ -62,11 +62,12 @@
       <p style="color:var(--text-muted);font-size:0.85em;margin-bottom:14px;">
         试试 Pro 深度测试 — 多维雷达图算法，含伪装检测与犹豫度分析
       </p>
-      <a href="/pro_test.html" class="btn btn-sm" style="background:linear-gradient(135deg,#b76e79,#8b5a6b);color:#fff;border:none;border-radius:24px;padding:7px 20px;">体验 Pro 深度测试</a>
+      <a href="/pro_test.html" class="btn btn-sm" style="background:var(--pro-gradient);color:#fff;border:none;border-radius:24px;padding:7px 20px;">体验 Pro 深度测试</a>
     </div>
   </div>
 
   <div class="footer">
+    <div id="theme-palette" style="margin-bottom:10px;"></div>
     <p>伴侣匹配测试 &copy; 2026 · 用心了解自己，才能遇见对的人</p>
     <p style="margin-top:6px;">
       <a href="/verify.html" style="color:var(--text-muted);">结果验真</a>
@@ -76,33 +77,8 @@
   <script src="/js/api.js?v=3"></script>
   <script src="/js/utils.js?v=2"></script>
   <script>
-    // ── 主题切换（可扩展）──
-    // 点击 nav-brand 5 次循环切换主题色调
-    (function(){
-      var themes = ['rose','peach','coral','blush','berry','warm','soft'];
-      var themeMap = {
-        rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},
-        coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},
-        berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},
-        soft:{p:'#f8a5b6',d:'#e08a9b'}
-      };
-      var clicks = 0, timer = null;
-      document.querySelector('.nav-brand').addEventListener('click', function(e){
-        clicks++;
-        clearTimeout(timer);
-        if (clicks >= 5) {
-          var current = localStorage.getItem('theme') || 'rose';
-          var idx = themes.indexOf(current);
-          var next = themes[(idx + 1) % themes.length];
-          var c = themeMap[next];
-          document.documentElement.style.setProperty('--primary', c.p);
-          document.documentElement.style.setProperty('--primary-dark', c.d);
-          localStorage.setItem('theme', next);
-          clicks = 0;
-        }
-        timer = setTimeout(function(){ clicks = 0; }, 800);
-      });
-    })();
+    // ── 主题调色板 ──
+    Theme.renderPalette(document.getElementById('theme-palette'));
 
     // ── 致谢窗口 ──
     var currentSort = 'time';

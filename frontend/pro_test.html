@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pro 深度算法测试 - 伴侣匹配测试</title>
-  <link rel="stylesheet" href="/css/style.css?v=3">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
+  <link rel="stylesheet" href="/css/style.css?v=4">
+  <script src="/js/theme.js?v=1"></script>
   <style>
     .pro-badge {
       display: inline-block;
-      background: linear-gradient(135deg, #b76e79, #8b5a6b);
+      background: var(--pro-gradient);
       color: #fff;
       padding: 3px 12px;
       border-radius: 12px;
@@ -52,7 +52,7 @@
     }
     .radar-item .bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, #b76e79, #8b5a6b);
+      background: var(--pro-gradient);
       border-radius: 3px;
       transition: width 0.6s ease;
     }
@@ -133,7 +133,7 @@
         · <strong>投诉并跳过</strong> — 题目有问题或让你不适，标记后换一题。<br><br>
         ⚠ 此模式使用<strong>独立题库</strong>和<strong>独立评分算法</strong>，结果不与普通版互通。
       </div>
-      <button class="btn btn-primary btn-pulse" onclick="startProTest()" style="font-size:1.08em;padding:14px 40px;background:linear-gradient(135deg,#b76e79,#8b5a6b);">开始 Pro 深度测试</button>
+      <button class="btn btn-primary btn-pulse" onclick="startProTest()" style="font-size:1.08em;padding:14px 40px;background:var(--pro-gradient);">开始 Pro 深度测试</button>
     </div>
 
     <!-- Test Screen -->
@@ -143,9 +143,9 @@
           <span style="color:var(--text-light);font-size:0.9em;">第 <span id="q-num" style="color:var(--rose-gold);font-weight:600;">1</span> / <span id="q-total">12</span> 题</span>
           <span style="color:var(--text-light);font-size:0.9em;" id="progress-pct">0%</span>
         </div>
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;background:linear-gradient(90deg,#b76e79,#8b5a6b);"></div></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%;background:var(--pro-gradient);"></div></div>
         <div id="timer-bar-wrapper" style="height:4px;background:var(--primary-soft);border-radius:2px;margin-bottom:8px;overflow:hidden;display:none;">
-          <div id="timer-bar" style="height:100%;background:linear-gradient(90deg,#cca0aa,#e88d9e);width:100%;transition:width 1s linear;"></div>
+          <div id="timer-bar" style="height:100%;background:linear-gradient(90deg,var(--primary-light),#e88d9e);width:100%;transition:width 1s linear;"></div>
         </div>
         <h3 id="q-content" style="font-size:1.2em;margin-bottom:20px;min-height:60px;line-height:1.8;"></h3>
         <ul class="options-list" id="options-list"></ul>
@@ -172,15 +172,17 @@
       </div>
       <div style="text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center;">
         <a href="/index.html" class="btn btn-outline">返回首页</a>
-        <a href="/pro_test.html" class="btn btn-primary" style="background:linear-gradient(135deg,#b76e79,#8b5a6b);">再测一次</a>
+        <a href="/pro_test.html" class="btn btn-primary" style="background:var(--pro-gradient);">再测一次</a>
       </div>
     </div>
   </div>
 
   <div class="footer">
+    <div id="theme-palette" style="margin-bottom:10px;"></div>
     <p>伴侣匹配测试 &copy; 2026 · Pro 深度算法测试</p>
   </div>
 
+  <script src="/js/theme.js?v=1"></script>
   <script src="/js/api.js?v=3"></script>
   <script src="/js/utils.js?v=2"></script>
   <script>
@@ -441,7 +443,7 @@
         { key: 'CommonSense',  label: '常识',  emoji: '🧠' }
       ];
 
-      html += '<div style="background:linear-gradient(135deg,#faf5f7,#fff5f7);border-radius:var(--radius-md);padding:24px;text-align:center;margin-bottom:16px;">';
+      html += '<div style="background:linear-gradient(135deg,var(--bg-warm),var(--bg));border-radius:var(--radius-md);padding:24px;text-align:center;margin-bottom:16px;">';
       html += '<div style="display:flex;justify-content:center;gap:28px;flex-wrap:wrap;">';
       dims.forEach(function(d) {
         var score = radar[d.key];
@@ -464,7 +466,7 @@
       html += '</div>';
 
       // Total scores
-      html += '<div style="background:linear-gradient(135deg,#faf5f7,#fff5f7);border-radius:var(--radius-md);padding:20px;text-align:center;margin-bottom:20px;">';
+      html += '<div style="background:linear-gradient(135deg,var(--bg-warm),var(--bg));border-radius:var(--radius-md);padding:20px;text-align:center;margin-bottom:20px;">';
       html += '<div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">';
       html += '<div><div style="font-size:1.8em;font-weight:700;color:var(--rose-gold);">' + (result.finalScore != null ? result.finalScore.toFixed(1) : '0.0') + '</div>';
       html += '<div style="font-size:0.8em;color:#888;margin-top:4px;">四维总分</div></div>';
@@ -479,7 +481,7 @@
         html += '<div style="font-size:0.85em;color:var(--text-muted);margin-bottom:10px;text-align:center;">验真码</div>';
         html += '<div style="display:flex;align-items:center;gap:10px;">';
         html += '<code id="local-token" style="flex:1;background:var(--bg);padding:10px 14px;border-radius:10px;font-size:13px;word-break:break-all;font-family:monospace;color:var(--text);border:1px solid var(--border);">' + escapeHtml(result.localToken) + '</code>';
-        html += '<button onclick="copyToken()" style="border:none;background:linear-gradient(135deg,#b76e79,#8b5a6b);color:#fff;padding:10px 18px;border-radius:24px;cursor:pointer;font-size:0.85em;white-space:nowrap;font-weight:600;">复制</button>';
+        html += '<button onclick="copyToken()" style="border:none;background:var(--pro-gradient);color:#fff;padding:10px 18px;border-radius:24px;cursor:pointer;font-size:0.85em;white-space:nowrap;font-weight:600;">复制</button>';
         html += '</div>';
         html += '<div style="margin-top:14px;text-align:center;">';
         html += '<a href="/verify.html" class="btn btn-sm btn-outline" target="_blank">去验真</a>';
@@ -502,7 +504,7 @@
         var orig = btn.textContent;
         btn.textContent = '已复制';
         btn.style.background = '#28a745';
-        setTimeout(function() { btn.textContent = orig; btn.style.background = 'linear-gradient(135deg,#b76e79,#8b5a6b)'; }, 1500);
+        setTimeout(function() { btn.textContent = orig; btn.style.background = ''; }, 1500);
       });
     }
 
@@ -512,6 +514,8 @@
       div.appendChild(document.createTextNode(str));
       return div.innerHTML.replace(/"/g, '&quot;');
     }
+
+    Theme.renderPalette(document.getElementById('theme-palette'));
   </script>
 </body>
 </html>

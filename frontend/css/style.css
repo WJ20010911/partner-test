@@ -1,12 +1,25 @@
-/* ── CSS Variables (Romantic Theme) ── */
+/* ── Shared constants ── */
 :root {
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+/* ═══ Theme: Rose (玫瑰粉) — default ═══ */
+:root, [data-theme="rose"] {
   --primary: #ff6b81;
+  --primary-rgb: 255, 107, 129;
   --primary-dark: #e85d75;
   --primary-light: #ffb3c1;
   --primary-soft: #ffe0e6;
   --accent: #ff8fa3;
+  --accent-rgb: 255, 143, 163;
   --accent-warm: #ffa07a;
-  --rose-gold: #b76e79;
+  --pro-gradient: linear-gradient(135deg, #b76e79, #8b5a6b);
+  --pro-gradient-hover: linear-gradient(135deg, #c9808a, #9b6a7a);
+  --pro-text: #8b5a6b;
+  --pro-shadow: 0 2px 8px rgba(139, 90, 107, 0.2);
+  --pro-shadow-hover: 0 4px 14px rgba(139, 90, 107, 0.3);
   --text: #2d1b1f;
   --text-light: #6b5560;
   --text-muted: #9c8a90;
@@ -17,9 +30,115 @@
   --shadow-sm: 0 2px 8px rgba(255, 107, 129, 0.06);
   --shadow-md: 0 4px 20px rgba(255, 107, 129, 0.10);
   --shadow-lg: 0 8px 36px rgba(255, 107, 129, 0.14);
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --body-bg: linear-gradient(160deg, #fff0f3 0%, #fce4ec 30%, #f8e8f0 60%, #fff5f5 100%);
+  --hero-gradient: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-warm) 100%);
+  --stat-gradient: linear-gradient(135deg, var(--primary), var(--accent-warm));
+  --progress-gradient: linear-gradient(90deg, var(--primary-light), var(--primary), var(--primary-dark));
+  --btn-primary-bg: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  --btn-primary-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+  --btn-primary-shadow-hover: 0 6px 20px rgba(var(--primary-rgb), 0.45);
+}
+
+/* ═══ Theme: Ocean (海洋蓝) ═══ */
+[data-theme="ocean"] {
+  --primary: #5b9bd5;
+  --primary-rgb: 91, 155, 213;
+  --primary-dark: #3b7ec4;
+  --primary-light: #a8d0f0;
+  --primary-soft: #dceaf6;
+  --accent: #6db3e8;
+  --accent-rgb: 109, 179, 232;
+  --accent-warm: #5ba0d0;
+  --pro-gradient: linear-gradient(135deg, #4a7698, #3a6080);
+  --pro-gradient-hover: linear-gradient(135deg, #5a86a8, #4a7090);
+  --pro-text: #3a6080;
+  --pro-shadow: 0 2px 8px rgba(58, 96, 128, 0.2);
+  --pro-shadow-hover: 0 4px 14px rgba(58, 96, 128, 0.3);
+  --text: #1a2530;
+  --text-light: #4a6078;
+  --text-muted: #7a90a8;
+  --border: #d0dce8;
+  --bg: #f4f8fc;
+  --bg-card: #ffffff;
+  --bg-warm: #f0f5fa;
+  --shadow-sm: 0 2px 8px rgba(91, 155, 213, 0.06);
+  --shadow-md: 0 4px 20px rgba(91, 155, 213, 0.10);
+  --shadow-lg: 0 8px 36px rgba(91, 155, 213, 0.14);
+  --body-bg: linear-gradient(160deg, #eef4fa 0%, #e4eef8 30%, #eaf0f8 60%, #f4f8fc 100%);
+  --hero-gradient: linear-gradient(135deg, var(--primary-dark) 0%, #3b8ec4 100%);
+  --stat-gradient: linear-gradient(135deg, var(--primary), #3b8ec4);
+  --progress-gradient: linear-gradient(90deg, var(--primary-light), var(--primary), var(--primary-dark));
+  --btn-primary-bg: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  --btn-primary-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+  --btn-primary-shadow-hover: 0 6px 20px rgba(var(--primary-rgb), 0.45);
+}
+
+/* ═══ Theme: Forest (森林绿) ═══ */
+[data-theme="forest"] {
+  --primary: #4caf82;
+  --primary-rgb: 76, 175, 130;
+  --primary-dark: #388e63;
+  --primary-light: #a3d9b5;
+  --primary-soft: #d8f0e2;
+  --accent: #66bb6a;
+  --accent-rgb: 102, 187, 106;
+  --accent-warm: #6aad60;
+  --pro-gradient: linear-gradient(135deg, #4a8060, #3a6a4e);
+  --pro-gradient-hover: linear-gradient(135deg, #5a9070, #4a7a5e);
+  --pro-text: #3a6a4e;
+  --pro-shadow: 0 2px 8px rgba(58, 106, 78, 0.2);
+  --pro-shadow-hover: 0 4px 14px rgba(58, 106, 78, 0.3);
+  --text: #1a2a1e;
+  --text-light: #4a6a50;
+  --text-muted: #7a9a80;
+  --border: #c8e0d0;
+  --bg: #f4faf6;
+  --bg-card: #ffffff;
+  --bg-warm: #f0f8f2;
+  --shadow-sm: 0 2px 8px rgba(76, 175, 130, 0.06);
+  --shadow-md: 0 4px 20px rgba(76, 175, 130, 0.10);
+  --shadow-lg: 0 8px 36px rgba(76, 175, 130, 0.14);
+  --body-bg: linear-gradient(160deg, #eef6f0 0%, #e4f2e8 30%, #eaf2ec 60%, #f4faf6 100%);
+  --hero-gradient: linear-gradient(135deg, var(--primary-dark) 0%, #2e8e50 100%);
+  --stat-gradient: linear-gradient(135deg, var(--primary), #2e8e50);
+  --progress-gradient: linear-gradient(90deg, var(--primary-light), var(--primary), var(--primary-dark));
+  --btn-primary-bg: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  --btn-primary-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+  --btn-primary-shadow-hover: 0 6px 20px rgba(var(--primary-rgb), 0.45);
+}
+
+/* ═══ Theme: Sunset (日落橙) ═══ */
+[data-theme="sunset"] {
+  --primary: #f0855a;
+  --primary-rgb: 240, 133, 90;
+  --primary-dark: #d87040;
+  --primary-light: #f5b89a;
+  --primary-soft: #fce4d8;
+  --accent: #f0996b;
+  --accent-rgb: 240, 153, 107;
+  --accent-warm: #e88850;
+  --pro-gradient: linear-gradient(135deg, #a06850, #8a5040);
+  --pro-gradient-hover: linear-gradient(135deg, #b07860, #9a6050);
+  --pro-text: #8a5040;
+  --pro-shadow: 0 2px 8px rgba(138, 80, 64, 0.2);
+  --pro-shadow-hover: 0 4px 14px rgba(138, 80, 64, 0.3);
+  --text: #2a1a10;
+  --text-light: #705040;
+  --text-muted: #a08070;
+  --border: #e8d4c8;
+  --bg: #faf5f2;
+  --bg-card: #ffffff;
+  --bg-warm: #f8f0ea;
+  --shadow-sm: 0 2px 8px rgba(240, 133, 90, 0.06);
+  --shadow-md: 0 4px 20px rgba(240, 133, 90, 0.10);
+  --shadow-lg: 0 8px 36px rgba(240, 133, 90, 0.14);
+  --body-bg: linear-gradient(160deg, #faf0ea 0%, #f8e8de 30%, #f6e8e0 60%, #faf5f2 100%);
+  --hero-gradient: linear-gradient(135deg, var(--primary-dark) 0%, #d06030 100%);
+  --stat-gradient: linear-gradient(135deg, var(--primary), #d06030);
+  --progress-gradient: linear-gradient(90deg, var(--primary-light), var(--primary), var(--primary-dark));
+  --btn-primary-bg: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  --btn-primary-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35);
+  --btn-primary-shadow-hover: 0 6px 20px rgba(var(--primary-rgb), 0.45);
 }
 
 /* ── Reset & Base ── */
@@ -32,13 +151,13 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
   color: var(--text);
-  background: linear-gradient(160deg, #fff0f3 0%, #fce4ec 30%, #f8e8f0 60%, #fff5f5 100%);
+  background: var(--body-bg);
   min-height: 100vh;
   line-height: 1.6;
   background-attachment: fixed;
 }
 
-/* ── Floating hearts background ── */
+/* ── Ambient glow overlay ── */
 body::before {
   content: '';
   position: fixed;
@@ -46,9 +165,9 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(circle at 15% 20%, rgba(255,107,129,0.06) 0%, transparent 50%),
-    radial-gradient(circle at 85% 60%, rgba(255,143,163,0.05) 0%, transparent 50%),
-    radial-gradient(circle at 50% 80%, rgba(255,160,122,0.04) 0%, transparent 50%);
+    radial-gradient(circle at 15% 20%, rgba(var(--primary-rgb), 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 85% 60%, rgba(var(--accent-rgb), 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(var(--primary-rgb), 0.04) 0%, transparent 50%);
 }
 
 /* All content above the bg */
@@ -149,7 +268,7 @@ a:hover {
 .hero h1 {
   font-size: 2.2em;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-warm) 100%);
+  background: var(--hero-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -221,26 +340,26 @@ a:hover {
 /* ── Buttons (color variants) ── */
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--btn-primary-bg);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 4px 14px rgba(255,107,129,0.35);
+  box-shadow: var(--btn-primary-shadow);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(255,107,129,0.45);
+  box-shadow: var(--btn-primary-shadow-hover);
   transform: translateY(-2px);
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, #4a3540, #5a4550);
+  background: linear-gradient(135deg, #4a4a5a, #5a5a6a);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 4px 14px rgba(74,53,64,0.25);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
 }
 
 .btn-secondary:hover {
-  box-shadow: 0 6px 20px rgba(74,53,64,0.35);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
   transform: translateY(-2px);
 }
 
@@ -271,8 +390,8 @@ a:hover {
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 4px 14px rgba(255,107,129,0.35); }
-  50% { box-shadow: 0 4px 28px rgba(255,107,129,0.55); }
+  0%, 100% { box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.35); }
+  50% { box-shadow: 0 4px 28px rgba(var(--primary-rgb), 0.55); }
 }
 
 /* ── Options List ── */
@@ -308,10 +427,10 @@ a:hover {
 
 .option-btn.selected {
   border-color: var(--primary);
-  background: linear-gradient(135deg, #ffe0e6, #fff0f3);
+  background: linear-gradient(135deg, var(--primary-soft), var(--bg-warm));
   font-weight: 600;
   color: var(--primary-dark);
-  box-shadow: 0 2px 12px rgba(255,107,129,0.15);
+  box-shadow: var(--shadow-md);
   transform: scale(1.01);
 }
 
@@ -326,7 +445,7 @@ a:hover {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-light), var(--primary), var(--primary-dark));
+  background: var(--progress-gradient);
   border-radius: 3px;
   transition: width 0.4s ease;
 }
@@ -419,7 +538,7 @@ a:hover {
 .stat-card .num {
   font-size: 34px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--accent-warm));
+  background: var(--stat-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -889,19 +1008,19 @@ a:hover {
 }
 
 .nav-pro-btn {
-  background: linear-gradient(135deg, #b76e79, #8b5a6b) !important;
+  background: var(--pro-gradient) !important;
   color: #fff !important;
   padding: 7px 16px !important;
   border-radius: 20px !important;
   font-weight: 600 !important;
   font-size: 0.85em !important;
-  box-shadow: 0 2px 8px rgba(139,90,107,0.2);
+  box-shadow: var(--pro-shadow);
 }
 
 .nav-pro-btn:hover {
-  background: linear-gradient(135deg, #c9808a, #9b6a7a) !important;
+  background: var(--pro-gradient-hover) !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(139,90,107,0.3);
+  box-shadow: var(--pro-shadow-hover);
   text-decoration: none !important;
 }
 

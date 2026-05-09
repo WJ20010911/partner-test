@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>答题 - 伴侣匹配测试</title>
-  <link rel="stylesheet" href="/css/style.css?v=3">
-  <script>!function(){var t=localStorage.getItem('theme');if(t){var m={rose:{p:'#ff6b81',d:'#e85d75'},peach:{p:'#ff8fa3',d:'#e8788a'},coral:{p:'#ff7f7f',d:'#e86868'},blush:{p:'#f081a2',d:'#d86a8a'},berry:{p:'#c94c6f',d:'#b33a5a'},warm:{p:'#ff6b81',d:'#e85d75'},soft:{p:'#f8a5b6',d:'#e08a9b'}};var c=m[t];if(c){document.documentElement.style.setProperty('--primary',c.p);document.documentElement.style.setProperty('--primary-dark',c.d)}}}();</script>
+  <link rel="stylesheet" href="/css/style.css?v=4">
+  <script src="/js/theme.js?v=1"></script>
   <style>
     .test-container { max-width: 680px; margin: 0 auto; }
     .question-card { background: var(--bg-card); border-radius: var(--radius-md); padding: 28px; margin-bottom: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
@@ -107,10 +107,10 @@
         </div>
       </div>
       <!-- Pro upsell -->
-      <div class="result-card" style="border:1px dashed var(--primary-light);background:linear-gradient(135deg,#fdf5f7,#fff);">
+      <div class="result-card" style="border:1px dashed var(--primary-light);background:linear-gradient(135deg,var(--bg-warm),var(--bg-card));">
         <p style="color:var(--text-light);font-size:0.9em;margin-bottom:6px;">觉得结果不够准？</p>
         <p style="color:var(--text-muted);font-size:0.82em;margin-bottom:12px;">试试 Pro 深度测试 — 反伪装 + 犹豫度检测，算法更复杂，结果更精准</p>
-        <a href="/pro_test.html" class="btn btn-sm" style="background:linear-gradient(135deg,#b76e79,#8b5a6b);color:#fff;border:none;border-radius:24px;padding:7px 22px;">Pro 深度测试</a>
+        <a href="/pro_test.html" class="btn btn-sm" style="background:var(--pro-gradient);color:#fff;border:none;border-radius:24px;padding:7px 22px;">Pro 深度测试</a>
       </div>
       <div style="text-align:center;margin-top:20px;display:flex;gap:12px;justify-content:center;">
         <a href="/index.html" class="btn btn-outline">返回首页</a>
@@ -317,6 +317,11 @@
         setTimeout(function() { btn.textContent = orig; }, 1500);
       });
     }
+    Theme.renderPalette(document.getElementById('theme-palette'));
   </script>
+  <div class="footer">
+    <div id="theme-palette" style="margin-bottom:10px;"></div>
+    <p>伴侣匹配测试 &copy; 2026</p>
+  </div>
 </body>
 </html>
